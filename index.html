@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Freddy · CSN Quote Co-pilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+@property --a { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+:root{
+  --navy:#10103E; --navy-2:#0A0A2C; --navy-3:#17175A;
+  --blue:#1739E5; --blue-2:#4B86EB; --sky:#5BC2F0; --sky-soft:#D7E7F8;
+  --bg:#EEF3F8; --card:#FFFFFF; --line:#E3E9F1; --line-2:#EDF1F6;
+  --ink:#10103E; --ink-2:#3A3F63; --muted:#6B7393; --faint:#9AA2BF;
+  --green:#10A36E; --green-soft:#E3F6EE; --amber:#E08A00; --amber-soft:#FFF3DC; --red:#E0294D; --red-soft:#FDE7EC;
+  --r:20px; --r-sm:12px;
+  --shadow:0 1px 2px rgba(16,16,62,.03);
+  --freddy-w:27rem;
+  --font:'Helvena','Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  --display:'Rink','Outfit','Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px}
+html.kiosk{font-size:19px}
+body{font-family:var(--font);color:var(--ink);background:var(--bg);height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased;letter-spacing:-.005em}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input{font:inherit;color:inherit}
+b,strong{font-weight:650}
+.num{font-family:var(--display);font-feature-settings:'tnum' 1;letter-spacing:-.02em}
+
+/* ---------- layout ---------- */
+.app{display:grid;grid-template-columns:4.6rem var(--freddy-w) 1fr;grid-template-rows:minmax(0,1fr);height:100vh;transition:grid-template-columns .5s cubic-bezier(.2,.8,.2,1)}
+html.kiosk .app{grid-template-columns:0 42vw 1fr}
+html.kiosk .rail{opacity:0;pointer-events:none}
+
+.rail{display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:1.1rem 0;transition:opacity .3s}
+.rail .logo{margin-bottom:1.2rem}.rail .logo svg{width:2.3rem;height:2.3rem;display:block}
+.rail button{width:2.9rem;height:2.9rem;border-radius:14px;display:grid;place-items:center;color:var(--ink-2);transition:.2s;position:relative}
+.rail button:hover{background:#fff}
+.rail button.on{background:var(--navy);color:#fff}
+.rail button svg{width:1.25rem;height:1.25rem}
+.rail .sp{flex:1}
+.rail button[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:3.3rem;top:50%;transform:translateY(-50%);background:var(--navy);color:#fff;font-size:.75rem;padding:.35rem .6rem;border-radius:8px;white-space:nowrap;z-index:50}
+
+/* ---------- Freddy panel ---------- */
+.freddy-wrap{position:relative;padding:.85rem 0;z-index:5;min-width:0;min-height:0}
+.freddy-glow{position:absolute;inset:.85rem 0;border-radius:30px;opacity:0;transition:opacity .5s;pointer-events:none;
+  background:conic-gradient(from var(--a),#7FD3FF,#FFFFFF,#4B86EB,#A89BFF,#7FD3FF);animation:spin 4s linear infinite;filter:blur(16px)}
+.freddy-wrap.live .freddy-glow{opacity:.95}
+.freddy-wrap.talk .freddy-glow{opacity:.45;animation-duration:7s}
+@keyframes spin{to{--a:360deg}}
+.freddy{position:relative;height:100%;min-height:0;border-radius:28px;overflow:hidden;display:flex;flex-direction:column;color:#fff;
+  background:radial-gradient(90% 40% at 90% 0%,rgba(127,211,255,.32),transparent 62%),radial-gradient(90% 38% at 0% 100%,rgba(255,255,255,.22),transparent 65%),linear-gradient(180deg,#151563 0%,#1739E5 52%,#4B86EB 100%);
+  box-shadow:0 30px 60px -26px rgba(23,57,229,.6), inset 0 0 0 1px rgba(255,255,255,.14)}
+.f-head{display:flex;align-items:center;justify-content:space-between;padding:1rem 1rem .6rem 1.2rem;position:relative;z-index:2}
+.f-id{display:flex;align-items:center;gap:.65rem}
+.f-mark{width:2.1rem;height:2.1rem;border-radius:11px;background:rgba(255,255,255,.14);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.f-mark svg{width:1.25rem;height:1.25rem}
+.f-id b{display:block;font-family:var(--display);font-size:1.12rem;font-weight:600;letter-spacing:-.01em;line-height:1.1}
+.f-id small{display:block;font-size:.74rem;color:rgba(255,255,255,.72);margin-top:2px}
+.f-id small.on{color:#BFEAFF}
+.f-ctrls{display:flex;gap:.3rem}
+.f-ctrls button{width:2.1rem;height:2.1rem;border-radius:50%;display:grid;place-items:center;color:rgba(255,255,255,.85);background:rgba(255,255,255,.12);transition:.2s}
+.f-ctrls button:hover{background:rgba(255,255,255,.24);color:#fff}
+.f-ctrls button.on{background:#fff;color:var(--blue)}
+.f-ctrls svg{width:1rem;height:1rem}
+
+.f-feed{flex:1;min-height:0;overflow-y:auto;padding:.6rem 1.2rem 1rem;display:flex;flex-direction:column;gap:1rem;scroll-behavior:smooth;position:relative;z-index:1;
+  mask-image:linear-gradient(180deg,transparent 0,#000 1.5rem,#000 calc(100% - .8rem),transparent);-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 1.5rem,#000 calc(100% - .8rem),transparent)}
+.f-feed::-webkit-scrollbar{width:0}
+.msg{max-width:100%;animation:msgIn .45s cubic-bezier(.2,.8,.2,1) both}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}}
+.msg.fr{font-size:1.02rem;line-height:1.55;color:#fff}
+.msg.fr b{font-weight:650}
+.msg.fr .w{display:inline;opacity:0;filter:blur(4px);animation:wIn .5s ease forwards}
+@keyframes wIn{to{opacity:1;filter:blur(0)}}
+.msg.me{align-self:flex-end;max-width:85%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);padding:.55rem .85rem;border-radius:18px 18px 6px 18px;font-size:.93rem;color:#fff;backdrop-filter:blur(6px)}
+.msg.me .src{display:flex;align-items:center;gap:.3rem;font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:.15rem;font-weight:600}
+.msg.me .src svg{width:.75rem;height:.75rem}
+.msg.sys{align-self:center;font-size:.68rem;color:rgba(255,255,255,.75);letter-spacing:.06em;text-transform:uppercase;font-weight:600;display:flex;align-items:center;gap:.45rem}
+.msg.sys::before,.msg.sys::after{content:'';width:1.5rem;height:1px;background:rgba(255,255,255,.3)}
+
+/* chat cards — solid white for clarity */
+.fcard{margin-top:.75rem;border-radius:18px;background:#fff;color:var(--ink);overflow:hidden;animation:msgIn .5s .15s both;box-shadow:0 14px 30px -16px rgba(10,10,62,.45)}
+.fcard .row{display:flex;align-items:center;gap:.7rem;padding:.7rem .85rem;border-top:1px solid #EEF2F8;cursor:pointer;transition:background .2s}
+.fcard .row:first-child{border-top:0}
+.fcard .row:hover{background:#F5F8FD}
+.fcard .row .nm{flex:1;min-width:0}
+.fcard .row .nm b{display:block;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fcard .row .nm small{font-size:.73rem;color:var(--muted)}
+.fcard .row .pr{text-align:right}
+.fcard .row .pr b{display:block;font-size:1rem}
+.fcard .row .pr small{font-size:.72rem;color:var(--muted)}
+.fcard .tagline{font-size:.6rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700;color:var(--blue)}
+.fbtn{height:2rem;padding:0 .85rem;border-radius:999px;font-size:.77rem;font-weight:650;background:var(--navy);color:#fff;transition:.2s;white-space:nowrap}
+.fbtn:hover{transform:translateY(-1px)}
+.fbtn.ghost{background:#EEF2F8;color:var(--ink)}
+.fbtn.blue{background:var(--blue);color:#fff}
+.fcard .acts{display:flex;gap:.45rem;padding:.75rem .85rem;border-top:1px solid #EEF2F8}
+.fcard .kv{display:grid;grid-template-columns:1fr 1fr;gap:.6rem .9rem;padding:.85rem}
+.fcard .kv small{display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.fcard .kv b{font-size:.93rem}
+.mono{width:2.2rem;height:2.2rem;border-radius:10px;display:grid;place-items:center;font-size:.72rem;font-weight:800;color:#fff;letter-spacing:.02em;flex:none}
+
+/* welcome (inside widget) */
+.f-welcome{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 1.8rem 2rem;position:relative;z-index:1}
+.w-orb{width:12rem;height:12rem;position:relative;margin-bottom:1.2rem}
+.w-orb canvas{position:absolute;inset:-14%;width:128%!important;height:128%!important}
+.f-welcome h2{font-family:var(--display);font-size:2.2rem;font-weight:600;letter-spacing:-.03em;line-height:1.05}
+.f-welcome p{color:rgba(255,255,255,.84);font-size:.95rem;line-height:1.5;max-width:20rem;margin:.6rem 0 1.7rem}
+.w-btn{width:100%;max-width:19rem;height:3.3rem;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:.55rem;font-weight:600;font-size:.95rem;transition:transform .25s, box-shadow .25s, background .25s}
+.w-btn svg{width:1.1rem;height:1.1rem}
+.w-btn.pri{background:#fff;color:var(--blue);box-shadow:0 14px 30px -12px rgba(10,10,62,.55)}
+.w-btn.pri:hover{transform:translateY(-2px);box-shadow:0 18px 36px -12px rgba(10,10,62,.6)}
+.w-btn.sec{margin-top:.6rem;background:rgba(255,255,255,.14);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
+.w-btn.sec:hover{background:rgba(255,255,255,.22)}
+.w-note{margin-top:1.3rem;font-size:.7rem;color:rgba(255,255,255,.65)}
+.freddy.pre .f-feed,.freddy.pre .f-dock{display:none}
+.freddy:not(.pre) .f-welcome{display:none}
+
+/* dock */
+.f-dock{position:relative;z-index:2;padding:.4rem 1rem .9rem;display:flex;flex-direction:column;gap:.65rem}
+.f-live{font-family:var(--display);font-size:1.3rem;line-height:1.3;font-weight:500;color:#fff;padding:0 .3rem;letter-spacing:-.01em}
+.f-live:empty{display:none}
+.f-live .muted{opacity:.7}
+.f-live .caret{display:inline-block;width:2px;height:1.05em;background:#fff;vertical-align:-.12em;margin-left:3px;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.f-chips{display:flex;gap:.45rem;flex-wrap:wrap}
+.chip{flex:none;height:2.1rem;padding:0 .9rem;border-radius:999px;font-size:.79rem;font-weight:550;color:#fff;background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.24);transition:.2s;animation:msgIn .4s both;white-space:nowrap}
+.chip:hover{background:rgba(255,255,255,.28);transform:translateY(-1px)}
+.chip.hot{background:#fff;color:var(--blue);box-shadow:0 8px 18px -10px rgba(10,10,62,.5);font-weight:650}
+.f-input{display:flex;align-items:center;gap:.75rem}
+.f-input form{flex:1;display:flex;align-items:center;height:3.2rem;border-radius:999px;background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);padding:0 .35rem 0 1.1rem;transition:.25s;backdrop-filter:blur(8px)}
+.f-input form:focus-within{background:rgba(255,255,255,.26);box-shadow:inset 0 0 0 1px rgba(255,255,255,.7)}
+.f-input input{flex:1;min-width:0;background:none;border:0;outline:0;color:#fff;font-size:.95rem}
+.f-input input::placeholder{color:rgba(255,255,255,.75)}
+.f-input .send{width:2.5rem;height:2.5rem;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.2);color:#fff;transition:.2s}
+.f-input .send:hover{background:#fff;color:var(--blue)}
+.f-input .send svg{width:1.05rem;height:1.05rem}
+.orb-btn{position:relative;width:4.5rem;height:4.5rem;flex:none;border-radius:50%;transition:transform .3s}
+.orb-btn canvas{position:absolute;inset:-22%;width:144%!important;height:144%!important;pointer-events:none}
+.orb-btn:hover{transform:scale(1.05)}
+.orb-btn .ring{position:absolute;inset:-7px;width:calc(100% + 14px);height:calc(100% + 14px);transform:rotate(-90deg);opacity:0;transition:opacity .3s;pointer-events:none}
+.orb-btn .ring circle{fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-dasharray:301.6;stroke-dashoffset:0}
+.freddy-wrap.window .orb-btn .ring{opacity:.95}
+.freddy-wrap.window .orb-btn .ring circle{animation:cd 5s linear forwards}
+@keyframes cd{to{stroke-dashoffset:301.6}}
+.f-hint{font-size:.68rem;color:rgba(255,255,255,.78);text-align:center}
+.f-hint kbd{font-family:inherit;font-size:.64rem;padding:.05rem .35rem;border-radius:5px;background:rgba(255,255,255,.2);color:#fff}
+
+/* minimised */
+.expand{display:none}
+.app.collapsed{grid-template-columns:4.6rem 6rem 1fr}
+.app.collapsed .f-feed,.app.collapsed .f-id>div,.app.collapsed .f-ctrls,.app.collapsed .f-chips,.app.collapsed .f-input form,.app.collapsed .f-live,.app.collapsed .f-hint,.app.collapsed .f-welcome{display:none}
+.app.collapsed .freddy.pre .f-dock{display:flex}
+.app.collapsed .f-head{justify-content:center;padding:1.1rem .5rem .5rem}
+.app.collapsed .expand{display:flex;flex-direction:column;align-items:center;gap:.8rem;margin:1.2rem auto 0;color:#fff;font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.app.collapsed .expand svg{width:2.3rem;height:2.3rem;padding:.55rem;border-radius:50%;background:rgba(255,255,255,.16);transition:.2s}
+.app.collapsed .expand:hover svg{background:#fff;color:var(--blue)}
+.app.collapsed .expand span{writing-mode:vertical-rl;transform:rotate(180deg);opacity:.85}
+.app.collapsed .f-dock{margin-top:auto;align-items:center;padding-bottom:1.3rem}
+.app.collapsed .f-input{justify-content:center}
+
+/* ---------- stage ---------- */
+.stage{min-height:0;overflow-y:auto;overflow-x:hidden;padding:0 1.8rem 3rem 1.8rem;position:relative;scroll-behavior:smooth}
+html.kiosk .stage{padding:0 2rem 3rem 2rem}
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:1rem;padding:1rem 0 .9rem;background:linear-gradient(180deg,var(--bg) 70%,rgba(238,243,248,0))}
+.search{flex:1;max-width:34rem;height:2.85rem;border-radius:14px;background:#E3EAF2;display:flex;align-items:center;padding:0 .35rem 0 1rem;gap:.5rem}
+.search input{flex:1;background:none;border:0;outline:0;font-size:.88rem;color:var(--ink)}
+.search input::placeholder{color:#8C95B3}
+.search .k{height:2.15rem;width:2.15rem;border-radius:10px;background:#fff;display:grid;place-items:center}
+.search .k svg{width:1rem;height:1rem}
+.topbar .sp{flex:1}
+.who{display:flex;align-items:center;gap:.6rem;font-size:.82rem;color:var(--ink-2);line-height:1.2}.who small{color:var(--muted)}
+.who .av{width:2.3rem;height:2.3rem;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.78rem}
+.ibtn{width:2.5rem;height:2.5rem;border-radius:12px;display:grid;place-items:center;position:relative;color:var(--ink-2)}
+.ibtn:hover{background:#fff}
+.ibtn svg{width:1.2rem;height:1.2rem}
+.ibtn .dot{position:absolute;top:.55rem;right:.6rem;width:.45rem;height:.45rem;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px var(--bg)}
+html.kiosk .topbar{display:none}
+html.kiosk .stage{padding-top:1.1rem}
+html.kiosk .q-grid{grid-template-columns:1fr}
+html.kiosk .sheet{position:relative;top:0;display:grid;grid-template-columns:1fr 1fr;column-gap:1.4rem}
+html.kiosk .sheet .hd{grid-column:1/-1}
+html.kiosk .fld:last-child{border-bottom:1px dashed var(--line)}
+html.kiosk .insights{grid-template-columns:1fr 1fr}
+html.kiosk .insights .ins:nth-child(3){display:none}
+html.kiosk .g2{grid-template-columns:1fr}
+html.kiosk .doc-wrap,html.kiosk .trk{grid-template-columns:1fr}
+html.kiosk .bk-grid{grid-template-columns:1fr 1fr}
+html.kiosk h1.hello{font-size:1.9rem}
+
+.view{animation:viewIn .55s cubic-bezier(.2,.8,.2,1) both}
+@keyframes viewIn{from{opacity:0;transform:translateY(14px)}}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid #E4EAF2}
+.h-eyebrow{font-size:.7rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+h1.hello{font-family:var(--display);font-weight:400;font-size:2.15rem;letter-spacing:-.035em;line-height:1.1;margin:.4rem 0 .4rem}
+h1.hello b{font-weight:650}
+.sub{color:var(--muted);font-size:.95rem}
+
+/* home */
+.insights{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1.5rem 0 1rem}
+.ins{padding:1.1rem 1.15rem 1rem;display:flex;flex-direction:column;gap:.55rem;position:relative;overflow:hidden;transition:transform .25s, box-shadow .25s}
+.ins:hover{transform:translateY(-2px);box-shadow:0 1px 2px rgba(16,16,62,.04),0 18px 40px -14px rgba(16,16,62,.2)}
+.ins .ic{width:2.2rem;height:2.2rem;border-radius:11px;display:grid;place-items:center}
+.ins .ic svg{width:1.1rem;height:1.1rem}
+.ins p{font-size:.92rem;line-height:1.45;color:var(--ink-2)}
+.ins p b{color:var(--ink)}
+.ins .go{margin-top:auto;align-self:flex-start;font-size:.8rem;font-weight:650;color:var(--blue);display:flex;align-items:center;gap:.3rem;padding:.35rem 0}
+.ins .go:hover{gap:.55rem}
+.ins .go{white-space:nowrap}.ins .go svg{width:1rem;height:1rem}
+.ins .fr-badge{position:absolute;top:1rem;right:1rem;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.g2{display:grid;grid-template-columns:1fr 1.15fr;gap:1rem}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.kpi{background:var(--sky-soft);border-radius:var(--r);padding:1rem 1.1rem;display:flex;flex-direction:column;justify-content:space-between;min-height:7rem;text-align:left;transition:.25s}
+.kpi:hover{background:#C9DEF4;transform:translateY(-2px)}
+.kpi span{font-size:.92rem;color:var(--ink-2)}
+.kpi .n{font-family:var(--display);font-size:3rem;font-weight:650;letter-spacing:-.04em;line-height:1;display:flex;align-items:flex-end;justify-content:space-between}
+.kpi .n svg{width:1.3rem;height:1.3rem;margin-bottom:.4rem;opacity:.7}
+.ship-card{padding:1.1rem 1.15rem}
+.ship-card .hd{display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem}
+.ship-card .hd b{font-size:.82rem;letter-spacing:.06em;text-transform:uppercase}
+.pill-n{font-size:.72rem;background:var(--line-2);border-radius:6px;padding:.1rem .4rem;color:var(--muted);font-weight:600}
+.filters{display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap}
+.filters button{height:2.1rem;padding:0 .75rem;border-radius:10px;border:1px solid var(--line);font-size:.8rem;display:flex;align-items:center;gap:.45rem;color:var(--ink-2);background:#fff;transition:.2s}
+.filters button.on{border-color:var(--navy);color:var(--navy);font-weight:600}
+.filters button .pill-n{background:var(--line-2)}
+.filters .f-np{color:var(--blue)} .filters .f-tr{color:var(--amber)} .filters .f-dl{color:var(--green)}
+table.ships{width:100%;border-collapse:collapse;font-size:.85rem}
+table.ships th{font-weight:500;color:var(--muted);text-align:left;font-size:.74rem;padding:.55rem .4rem;border-bottom:1px solid var(--line)}
+table.ships td{padding:.62rem .4rem;border-bottom:1px solid var(--line-2)}
+table.ships tr{cursor:pointer;transition:background .15s}
+table.ships tbody tr:hover{background:#F6F9FC}
+table.ships .id{color:var(--blue);font-weight:650}
+.st{display:inline-flex;align-items:center;gap:.4rem;font-weight:600;font-size:.8rem}
+.st::before{content:'';width:.42rem;height:.42rem;border-radius:50%;background:currentColor}
+.st.np{color:var(--blue)} .st.tr{color:var(--amber)} .st.dl{color:var(--green)} .st.al{color:var(--red)}
+.lanes{margin-top:1rem;padding:1.1rem 1.15rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.lanes .h-eyebrow{margin-right:.5rem}
+.lane-chip{height:2.3rem;padding:0 .95rem;border-radius:999px;border:1px solid var(--line);font-size:.84rem;font-weight:600;display:flex;align-items:center;gap:.45rem;transition:.2s}
+.lane-chip:hover{border-color:var(--blue);color:var(--blue);background:#F4F7FF}
+.lane-chip small{color:var(--muted);font-weight:500}
+
+/* quote view */
+.q-head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin:.3rem 0 1rem}
+.q-head h2{font-family:var(--display);font-size:1.85rem;letter-spacing:-.03em;font-weight:600}
+.q-head .steps{display:flex;gap:.4rem;align-items:center;font-size:.8rem;color:var(--muted)}
+.q-head .steps i{font-style:normal;width:1.35rem;height:1.35rem;border-radius:50%;display:inline-grid;place-items:center;background:var(--line);font-size:.7rem;font-weight:700;margin-right:.3rem}
+.q-head .steps span.on{color:var(--ink);font-weight:600}
+.q-head .steps span.on i{background:var(--sky);color:#fff}
+.q-head .steps .ln{width:2.2rem;height:1px;background:var(--line)}
+
+.hero{position:relative;border-radius:24px;overflow:hidden;color:#fff;padding:1.3rem 1.5rem 1.2rem;
+  background:radial-gradient(70% 120% at 90% 0%,rgba(127,211,255,.35),transparent 60%),linear-gradient(120deg,#151563 0%,#1739E5 70%,#4B86EB 100%)}
+.hero::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Ccircle cx='1' cy='1' r='1' fill='%23ffffff' fill-opacity='.07'/%3E%3C/svg%3E");pointer-events:none}
+.hero .ends{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1}
+.hero .end small{display:block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.72);font-weight:600}
+.hero .end .code{font-family:var(--display);font-size:3.1rem;font-weight:650;letter-spacing:-.04em;line-height:1;margin:.15rem 0 .2rem}
+.hero .end span{font-size:.85rem;color:rgba(255,255,255,.85)}
+.hero .end.r{text-align:right}
+.hero .end .code.ph{color:rgba(255,255,255,.22)}
+.hero svg.arc{position:absolute;left:0;right:0;top:0;width:100%;height:100%;z-index:0}
+.hero .meta{position:relative;z-index:1;display:flex;gap:1.6rem;margin-top:1.4rem;font-size:.8rem;color:rgba(255,255,255,.75);flex-wrap:wrap}
+.hero .meta b{display:block;color:#fff;font-size:.95rem;font-weight:600}
+.flash{animation:flash 1.2s ease}
+@keyframes flash{0%{background:rgba(91,194,240,.35)}100%{background:transparent}}
+
+.q-grid{display:grid;grid-template-columns:19rem 1fr;gap:1rem;margin-top:1rem;align-items:start}
+.sheet{padding:1.1rem 1.1rem .6rem;position:sticky;top:4.8rem}
+.sheet .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.sheet .hd b{font-size:.92rem}
+.sheet .live{font-size:.68rem;font-weight:700;color:var(--green);display:flex;align-items:center;gap:.35rem;letter-spacing:.05em;text-transform:uppercase}
+.sheet .live::before{content:'';width:.45rem;height:.45rem;border-radius:50%;background:var(--green);animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,163,110,.5)}70%{box-shadow:0 0 0 7px rgba(16,163,110,0)}100%{box-shadow:0 0 0 0 rgba(16,163,110,0)}}
+.fld{display:flex;justify-content:space-between;align-items:baseline;gap:.8rem;padding:.6rem .5rem;margin:0 -.5rem;border-radius:10px;border-bottom:1px dashed var(--line);cursor:pointer;transition:background .2s}
+.fld:last-child{border-bottom:0}
+.fld:hover{background:#F4F7FB}
+.fld small{font-size:.78rem;color:var(--muted);flex:none}
+.fld span{font-size:.86rem;font-weight:600;text-align:right}
+.fld span.empty{color:var(--faint);font-weight:500}
+.fld span em{font-style:normal;font-size:.66rem;font-weight:700;color:var(--faint);background:var(--line-2);border-radius:5px;padding:.08rem .32rem;margin-left:.35rem;vertical-align:1px;letter-spacing:.03em}
+.fld.key span{color:var(--blue);font-size:1rem}
+.fld.dg span{color:var(--red)}
+
+.res-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;gap:.6rem;flex-wrap:wrap}
+.res-head b{font-size:1.02rem}
+.res-head small{color:var(--muted);font-size:.82rem;margin-left:.35rem}
+.seg{display:flex;background:#E3EAF2;border-radius:12px;padding:3px}
+.seg button{height:2rem;padding:0 .75rem;border-radius:9px;font-size:.78rem;font-weight:600;color:var(--ink-2);transition:.2s}
+.seg button.on{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(16,16,62,.1)}
+.res-list{display:flex;flex-direction:column;gap:.8rem}
+.opt{padding:1.1rem 1.2rem 1rem;position:relative;transition:box-shadow .3s, transform .3s;animation:viewIn .5s both}
+.opt.sel{box-shadow:0 0 0 2px var(--blue),0 18px 40px -16px rgba(31,60,240,.35)}
+.opt .top{display:grid;grid-template-columns:auto 1fr auto;gap:1rem;align-items:start}
+.opt .mono{width:3.1rem;height:3.1rem;border-radius:14px;font-size:.85rem}
+.opt .nm b{font-size:1.08rem;color:var(--blue);font-weight:650;letter-spacing:-.01em}
+.opt .nm small{display:block;font-size:.72rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);margin-top:.1rem}
+.tags{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.5rem}
+.tag{font-size:.68rem;font-weight:700;padding:.2rem .5rem;border-radius:6px;letter-spacing:.02em}
+.tag.best{background:linear-gradient(135deg,#1739E5,#4B86EB);color:#fff}
+.tag.cheap{background:var(--green-soft);color:var(--green)}
+.tag.fast{background:var(--amber-soft);color:#B26D00}
+.tag.eco{background:#E6F7F3;color:#0C8A6A}
+.tag.spot{background:#F1E9FF;color:#6B3DD6}
+.tag.multi{background:#E9EEFF;color:var(--blue)}
+.tag.held{background:var(--navy);color:#fff}
+.opt .price{text-align:right}
+.opt .price .t{font-family:var(--display);font-size:1.9rem;font-weight:650;color:var(--blue);letter-spacing:-.035em;line-height:1}
+.opt .price .t.roq{font-size:.95rem;letter-spacing:0;font-family:var(--font);font-weight:700}
+.opt .price small{display:block;font-size:.8rem;font-weight:600;color:var(--ink-2);margin-top:.3rem}
+.opt .price .was{font-size:.78rem;color:var(--faint);text-decoration:line-through;font-weight:500;margin-right:.35rem}
+.tl{display:grid;grid-template-columns:auto 1fr auto;align-items:end;gap:1rem;margin:1rem 0 .2rem}
+.tl .pt small{display:block;font-size:.72rem;font-weight:700;color:var(--ink-2)}
+.tl .pt b{display:block;font-family:var(--display);font-size:1.3rem;font-weight:600;letter-spacing:-.02em}
+.tl .pt span{font-size:.72rem;color:var(--muted)}
+.tl .pt.r{text-align:right}
+.tl .line{position:relative;height:2.6rem;display:flex;align-items:center}
+.tl .line::before{content:'';position:absolute;left:0;right:0;top:50%;height:2px;background:linear-gradient(90deg,var(--sky),#9ED8F4);border-radius:2px}
+.tl .line .stop{position:absolute;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center}
+.tl .line .stop i{width:.55rem;height:.55rem;border-radius:50%;background:#fff;border:2px solid var(--sky)}
+.tl .line .stop span{position:absolute;top:.75rem;font-size:.68rem;font-weight:700;color:var(--ink-2);white-space:nowrap}
+.tl .line .end{position:absolute;top:50%;width:.7rem;height:.7rem;border-radius:50%;background:var(--sky);transform:translateY(-50%)}
+.tl .line .end.l{left:-.2rem}.tl .line .end.r{right:-.2rem}
+.tl .line .dur{position:absolute;left:50%;top:-.1rem;transform:translateX(-50%);font-size:.7rem;color:var(--muted);font-weight:600;background:#fff;padding:0 .4rem}
+.opt .bot{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-top:1rem;flex-wrap:wrap}
+.legs{display:flex;gap:.4rem;flex-wrap:wrap}
+.leg{background:#F2F5F9;border-radius:10px;padding:.4rem .65rem;font-size:.78rem}
+.leg b{display:block;font-size:.8rem}
+.leg span{color:var(--muted);font-size:.72rem}
+.acts{display:flex;gap:.45rem;align-items:center}
+.btn{height:2.3rem;padding:0 .95rem;border-radius:10px;font-size:.78rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;border:1px solid var(--line);background:#fff;display:inline-flex;align-items:center;gap:.4rem;transition:.2s;white-space:nowrap}
+.btn:hover{border-color:var(--ink-2)}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.pri:hover{background:#1530D8}
+.btn.dark{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn.ic{width:2.3rem;padding:0;justify-content:center}
+.btn svg{width:.95rem;height:.95rem}
+.btn.req{color:#6B3DD6;border-color:#D9CBFA;background:#F8F4FF}
+.charges{margin-top:.9rem;background:#F2F6FA;border-radius:14px;padding:.9rem 1rem;display:grid;grid-template-columns:1.3fr 1fr;gap:1.2rem;font-size:.84rem;animation:viewIn .35s both}
+.charges table{width:100%;border-collapse:collapse}
+.charges td{padding:.22rem 0}
+.charges td:last-child{text-align:right;font-weight:600}
+.charges tr.tot td{border-top:1px solid #D9E2EC;padding-top:.5rem;font-weight:700}
+.charges .side small{display:block;font-size:.72rem;color:var(--muted)}
+.charges .side b{display:block;margin-bottom:.5rem}
+.exp{font-size:.76rem;font-weight:650;color:var(--muted);display:inline-flex;align-items:center;gap:.25rem;margin-top:.6rem}
+.exp:hover{color:var(--blue)}
+.footnote{font-size:.72rem;color:var(--muted);margin-top:.35rem}
+
+.searching{padding:1.6rem 1.4rem}
+.searching .bar{height:4px;border-radius:4px;background:var(--line-2);overflow:hidden;margin:1rem 0 1.1rem}
+.searching .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--sky));animation:load 1.9s cubic-bezier(.4,0,.2,1) forwards}
+@keyframes load{to{width:100%}}
+.scan{display:grid;grid-template-columns:repeat(auto-fill,minmax(10.5rem,1fr));gap:.5rem}
+.scan div{display:flex;align-items:center;gap:.55rem;font-size:.8rem;color:var(--muted);opacity:0;animation:scanIn .35s forwards}
+@keyframes scanIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.scan .mono{width:1.7rem;height:1.7rem;border-radius:8px;font-size:.6rem}
+.skel{height:7.5rem;border-radius:var(--r);background:linear-gradient(90deg,#fff 0%,#F3F6FA 40%,#fff 80%);background-size:200% 100%;animation:sh 1.2s infinite;margin-top:.8rem}
+@keyframes sh{to{background-position:-200% 0}}
+.empty-res{padding:2.2rem 1.6rem;text-align:center;color:var(--muted)}
+.empty-res .big{font-family:var(--display);font-size:1.25rem;color:var(--ink);font-weight:600;margin:.8rem 0 .4rem;letter-spacing:-.02em}
+.empty-res p{font-size:.9rem;max-width:26rem;margin:0 auto 1rem;line-height:1.5}
+.ghost-orb{width:3.6rem;height:3.6rem;border-radius:50%;margin:0 auto;background:conic-gradient(from 200deg,#2B5BFF,#5BD1FF,#A06BFF,#FF62C8,#2B5BFF);filter:blur(.5px);opacity:.85;animation:spinb 6s linear infinite;box-shadow:0 0 30px rgba(91,170,255,.5)}
+@keyframes spinb{to{transform:rotate(360deg)}}
+
+/* doc */
+.doc-wrap{display:grid;grid-template-columns:1fr 18rem;gap:1rem;align-items:start}
+.doc{padding:2.2rem 2.4rem;position:relative;overflow:hidden}
+.doc::before{content:'';position:absolute;left:0;right:0;top:0;height:6px;background:linear-gradient(90deg,var(--navy),var(--blue),var(--sky))}
+.doc .dh{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.6rem}
+.doc .brand{font-family:var(--display);font-weight:700;font-size:1.15rem;letter-spacing:-.02em}
+.doc .brand .pw{display:flex;align-items:center;gap:.35rem;font-family:var(--font);font-weight:500;font-size:.72rem;color:var(--muted);letter-spacing:0;margin-top:.15rem}.doc .brand .pw svg{height:.95rem;width:auto}
+.doc .brand small{display:block;font-family:var(--font);font-weight:500;font-size:.75rem;color:var(--muted);letter-spacing:0}
+.doc .qn{text-align:right;font-size:.8rem;color:var(--muted)}
+.doc .qn b{display:block;font-size:1.1rem;color:var(--ink)}
+.doc h3{font-family:var(--display);font-size:1.5rem;letter-spacing:-.03em;font-weight:600;margin-bottom:.2rem}
+.doc .to{font-size:.88rem;color:var(--muted);margin-bottom:1.4rem}
+.doc .to b{color:var(--ink)}
+.doc table{width:100%;border-collapse:collapse;font-size:.88rem}
+.doc th{text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:.5rem 0;border-bottom:1px solid var(--line)}
+.doc td{padding:.65rem 0;border-bottom:1px solid var(--line-2)}
+.doc td:last-child,.doc th:last-child{text-align:right}
+.doc .total{display:flex;justify-content:space-between;align-items:baseline;margin-top:1.1rem;padding-top:1rem;border-top:2px solid var(--navy)}
+.doc .total span{font-size:.85rem;color:var(--muted)}
+.doc .total b{font-family:var(--display);font-size:2.1rem;letter-spacing:-.035em;color:var(--navy)}
+.doc .terms{font-size:.72rem;color:var(--muted);margin-top:1.4rem;line-height:1.5}
+.doc .stamp{position:absolute;right:2.4rem;top:7.6rem;transform:rotate(-8deg);border:2px solid var(--green);color:var(--green);font-weight:800;letter-spacing:.12em;font-size:.8rem;padding:.35rem .7rem;border-radius:8px;text-transform:uppercase;opacity:0;transition:.4s}
+.doc.sent .stamp{opacity:.9}
+.side-panel{padding:1.2rem}
+.side-panel h4{font-size:.92rem;margin-bottom:.9rem}
+.mrow{display:flex;justify-content:space-between;font-size:.86rem;padding:.45rem 0;border-bottom:1px dashed var(--line)}
+.mrow b{font-feature-settings:'tnum' 1}
+.mrow.big b{font-size:1.1rem;color:var(--green)}
+input[type=range]{width:100%;accent-color:var(--blue);margin:.4rem 0 .9rem}
+.mval{font-family:var(--display);font-size:2rem;font-weight:650;letter-spacing:-.03em;color:var(--navy)}
+.side-panel .btn{width:100%;justify-content:center;margin-top:.5rem}
+
+/* booked */
+.booked{padding:2rem 2rem 1.6rem;text-align:center}
+.check{width:5rem;height:5rem;margin:0 auto 1rem}
+.check circle{stroke:var(--green);stroke-width:3;fill:var(--green-soft);stroke-dasharray:240;stroke-dashoffset:240;animation:draw .8s .1s forwards}
+.check path{stroke:var(--green);stroke-width:4;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:draw .5s .7s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.booked h2{font-family:var(--display);font-size:2rem;letter-spacing:-.035em;font-weight:600}
+.booked .sid{font-family:var(--display);font-size:1.25rem;color:var(--blue);font-weight:650;margin:.3rem 0 1.2rem;letter-spacing:-.01em}
+.bk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;text-align:left;margin-top:1rem}
+.bk-grid div{background:#F4F7FB;border-radius:14px;padding:.8rem .9rem}
+.bk-grid small{display:block;font-size:.72rem;color:var(--muted)}
+.bk-grid b{font-size:.95rem}
+.next{padding:1.2rem 1.3rem;margin-top:1rem}
+.next h4{font-size:.92rem;margin-bottom:.6rem}
+.todo{display:flex;align-items:center;gap:.8rem;padding:.7rem 0;border-top:1px solid var(--line-2);font-size:.88rem}
+.todo:first-of-type{border-top:0}
+.todo i{width:1.2rem;height:1.2rem;border-radius:6px;border:2px solid var(--line);flex:none}
+.todo i.ok{background:var(--green);border-color:var(--green)}
+.todo span{flex:1}
+.todo .btn{height:2rem;font-size:.72rem}
+
+/* track */
+.trk{display:grid;grid-template-columns:1.25fr 1fr;gap:1rem;margin-top:1rem;align-items:start}
+.journey{padding:1.2rem 1.3rem}
+.journey h4,.trk-info h4{font-size:.92rem;margin-bottom:.8rem}
+.jgroup{margin-bottom:.4rem}
+.jgroup .gh{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:.7rem 0 .3rem}
+.jstep{display:grid;grid-template-columns:1.6rem 1fr auto;align-items:center;gap:.4rem;padding:.42rem 0;font-size:.88rem;position:relative}
+.jstep i{width:.85rem;height:.85rem;border-radius:50%;border:2px solid var(--line);background:#fff;position:relative;z-index:1}
+.jstep.done i{background:var(--green);border-color:var(--green)}
+.jstep.now i{background:var(--amber);border-color:var(--amber);box-shadow:0 0 0 5px rgba(224,138,0,.15)}
+.jstep.now.al i{background:var(--red);border-color:var(--red);box-shadow:0 0 0 5px rgba(224,41,77,.15)}
+.jstep.todo-s{color:var(--faint)}
+.jstep span.tm{font-size:.78rem;color:var(--muted);font-feature-settings:'tnum' 1}
+.alert{display:flex;gap:.8rem;align-items:flex-start;background:var(--red-soft);border-radius:14px;padding:.9rem 1rem;margin-top:1rem;font-size:.86rem;color:#8F1530}
+.alert b{color:#6A0F24}
+.alert .btn{margin-left:auto;flex:none}
+.trk-info{padding:1.2rem 1.3rem}
+.trk-info .mrow b{font-weight:600}
+
+/* toasts / modal */
+.toasts{position:fixed;right:1.4rem;bottom:1.4rem;display:flex;flex-direction:column;gap:.5rem;z-index:90;align-items:flex-end}
+.toast{background:var(--navy);color:#fff;padding:.75rem 1rem;border-radius:14px;font-size:.85rem;box-shadow:0 14px 30px -10px rgba(10,10,44,.5);display:flex;gap:.6rem;align-items:center;animation:toastIn .4s cubic-bezier(.2,.8,.2,1) both;max-width:24rem}
+.toast.out{animation:toastOut .35s forwards}
+.toast i{width:1.5rem;height:1.5rem;border-radius:50%;background:var(--green);display:grid;place-items:center;flex:none}.toast i svg{width:.85rem;height:.85rem}
+.toast i.w{background:var(--amber)}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.96)}}
+@keyframes toastOut{to{opacity:0;transform:translateY(8px)}}
+.modal{position:fixed;inset:0;background:rgba(10,10,44,.45);backdrop-filter:blur(6px);z-index:95;display:grid;place-items:center;opacity:0;visibility:hidden;transition:.3s}
+.modal.show{opacity:1;visibility:visible}
+.modal .box{background:#fff;border-radius:22px;padding:1.5rem;width:min(26rem,92vw);box-shadow:0 30px 60px -20px rgba(10,10,44,.5)}
+.modal h3{font-size:1.1rem;margin-bottom:1rem}
+.modal label{display:block;font-size:.78rem;color:var(--muted);margin:.9rem 0 .35rem;font-weight:600}
+.modal select{width:100%;height:2.6rem;border-radius:10px;border:1px solid var(--line);padding:0 .7rem;font:inherit;font-size:.86rem}
+.modal .row2{display:flex;justify-content:space-between;align-items:center;padding:.7rem 0;border-bottom:1px solid var(--line-2);font-size:.88rem}
+.switch{width:2.6rem;height:1.5rem;border-radius:999px;background:var(--line);position:relative;transition:.2s}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:calc(1.5rem - 6px);height:calc(1.5rem - 6px);border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.switch.on{background:var(--blue)}
+.switch.on::after{left:calc(100% - 1.5rem + 3px)}
+.modal .foot{display:flex;justify-content:flex-end;margin-top:1.3rem;gap:.5rem}.modal .foot .btn:first-child{margin-right:auto}
+
+/* responsive */
+@media (max-width:1180px){
+  .insights{grid-template-columns:1fr 1fr}
+  .insights .ins:nth-child(3){display:none}
+  .g2{grid-template-columns:1fr}
+  .q-grid{grid-template-columns:1fr}
+  .sheet{position:relative;top:0}
+  .doc-wrap{grid-template-columns:1fr}
+  .trk{grid-template-columns:1fr}
+  .bk-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:860px){
+  html{font-size:14px}
+  body{height:auto;overflow-x:hidden;overflow-y:auto}
+  .app,.app.collapsed{display:block;height:auto}
+  .rail,#collapseBtn,.who,.topbar .ibtn,.f-hint{display:none}
+  .stage{overflow:visible;padding:0 1rem calc(60dvh + 1.5rem);min-width:0}
+  .topbar{padding:.8rem 0}
+  .search{max-width:none}
+  .freddy-wrap{position:fixed;left:0;right:0;bottom:0;height:58dvh;padding:0 .5rem .5rem;z-index:30}
+  .freddy-glow{inset:0 .5rem .5rem}
+  .freddy{border-radius:24px}
+  .freddy.pre ~ * {}
+  .w-orb{width:8.5rem;height:8.5rem;margin-bottom:.6rem}
+  .f-welcome h2{font-size:1.8rem}
+  .f-welcome p{margin:.4rem 0 1.1rem;font-size:.9rem}
+  .w-btn{height:3rem}
+  .w-note{display:none}
+  h1.hello{font-size:1.7rem}
+  .insights{grid-template-columns:1fr;margin:1rem 0}
+  .insights .ins:nth-child(n+2){display:none}
+  .g2{grid-template-columns:1fr}
+  .kpis{grid-template-columns:1fr 1fr}
+  .kpi{min-height:5.5rem}.kpi .n{font-size:2.2rem}
+  .q-head{flex-direction:column;align-items:flex-start;gap:.4rem}
+  .q-head h2{font-size:1.5rem}
+  .hero{padding:1.1rem}
+  .hero .end .code{font-size:2.3rem}
+  .hero .meta{gap:.6rem 1.2rem}
+  .q-grid,.doc-wrap,.trk{grid-template-columns:1fr}
+  .sheet{position:relative;top:0}
+  .opt{padding:1rem}
+  .opt .top{grid-template-columns:auto 1fr}
+  .opt .price{grid-column:1/-1;text-align:left}
+  .opt .bot{flex-direction:column;align-items:stretch}
+  .acts{justify-content:flex-end}
+  .res-head{flex-direction:column;align-items:flex-start}
+  .seg{width:100%;overflow-x:auto}
+  .doc{padding:1.4rem}
+  .bk-grid{grid-template-columns:1fr 1fr}
+  .lanes{display:none}
+  table.ships th:nth-child(2),table.ships td:nth-child(2){display:none}
+  .toasts{left:1rem;right:1rem;bottom:calc(58dvh + .8rem);align-items:stretch}
+}
+
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <nav class="rail">
+    <div class="logo" title="Cargo Solutions Network"><svg aria-hidden="true" viewBox="34 34 110 124" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M87.4147 36.4228C88.3956 35.8591 89.6044 35.8591 90.5853 36.4228L103.43 43.8056C104.411 44.3694 105.014 45.4108 105.014 46.538V47.7382L105.015 47.7529V56.8564C105.015 58.9043 106.226 60.7391 108.011 61.7558C108.444 62.0024 108.872 62.2573 109.295 62.5195C111.092 63.6341 113.364 63.8022 115.198 62.751L124.399 57.4619C125.38 56.8982 126.589 56.8982 127.57 57.4619L140.415 64.8447C141.396 65.4084 142 66.4506 142 67.5781V82.3428C142 83.4703 141.396 84.5124 140.415 85.0762L139.384 85.6689L139.371 85.6768L139.358 85.6836L128.627 91.8516C128.619 91.8562 128.61 91.8606 128.602 91.8652L127.57 92.459C126.589 93.0227 125.38 93.0227 124.399 92.459L123.355 91.8584L123.344 91.8516L115.932 87.5918C114.296 86.6514 112.279 86.6528 110.644 87.5947L94.9398 96.6397C93.3075 97.5799 92.3017 99.315 92.3017 101.192V118.53C92.3017 120.409 93.309 122.145 94.9428 123.085L100.623 126.35C100.731 126.41 100.862 126.419 100.976 126.372C103.523 125.322 105.91 123.966 108.091 122.345C109.316 121.434 109.968 119.969 109.97 118.447V109.656C109.97 108.529 110.575 107.488 111.556 106.924L124.399 99.541C125.38 98.9773 126.589 98.9773 127.57 99.541L140.415 106.924C141.395 107.488 142 108.529 142 109.656V124.422C142 125.549 141.396 126.592 140.415 127.155L139.384 127.748L139.358 127.763L128.627 133.931C128.619 133.935 128.61 133.94 128.602 133.944L127.57 134.538C126.589 135.102 125.38 135.102 124.399 134.538L123.355 133.938L123.344 133.931L115.205 129.253C113.37 128.198 111.095 128.366 109.296 129.481C108.873 129.744 108.445 129.998 108.011 130.245C106.226 131.262 105.015 133.097 105.015 135.145V144.247L105.014 144.262V145.461C105.014 146.588 104.411 147.631 103.43 148.194L102.398 148.787C102.39 148.792 102.382 148.797 102.373 148.802L91.6421 154.97C91.6341 154.974 91.6255 154.979 91.6175 154.983L90.5853 155.577C89.6044 156.141 88.3956 156.141 87.4147 155.577L86.3697 154.977L86.3579 154.97L75.6268 148.802L75.6169 148.796L74.5699 148.194C73.5892 147.631 72.9847 146.588 72.9847 145.461V135.849C72.9789 133.737 71.6891 131.861 69.8131 130.873C69.1786 130.539 68.5537 130.188 67.939 129.82C66.1518 128.752 63.9179 128.608 62.1125 129.646L54.6565 133.931L54.6447 133.938L53.5996 134.538C52.619 135.102 51.4107 135.102 50.4301 134.538L49.3851 133.938L49.3732 133.931L38.6421 127.763L38.6323 127.757L37.5853 127.155C36.6044 126.592 36 125.549 36 124.422V109.656C36.0002 108.529 36.6046 107.488 37.5853 106.924L45.9681 102.105C47.7839 101.06 48.7743 99.0432 48.7235 96.9551C48.7158 96.6374 48.7117 96.3194 48.7117 96.001C48.7117 95.6821 48.7158 95.3631 48.7235 95.0449C48.7743 92.9555 47.7832 90.9377 45.9651 89.8926L38.6421 85.6836L38.6342 85.6787L37.5853 85.0762C36.6044 84.5124 36 83.4703 36 82.3428V67.5781C36 66.4506 36.6044 65.4084 37.5853 64.8447L50.4301 57.4619C51.4108 56.8983 52.6189 56.8984 53.5996 57.4619L62.1224 62.3603C63.9262 63.3923 66.1558 63.2472 67.94 62.1806C68.5544 61.8134 69.179 61.4618 69.8131 61.1279C71.6891 60.1401 72.9789 58.264 72.9847 56.1523V46.538C72.9848 45.4108 73.5893 44.3693 74.5699 43.8056L87.4147 36.4228ZM67.3564 87.5947C65.7211 86.6529 63.7044 86.6515 62.0682 87.5918L57.8783 90C56.4773 90.8052 55.4978 92.2037 55.39 93.8106C55.3412 94.5376 55.317 95.2686 55.317 96.001C55.317 96.7326 55.3413 97.4621 55.39 98.1885C55.4972 99.7903 56.4707 101.186 57.8645 101.992L66.4444 106.924C67.4252 107.488 68.0295 108.529 68.0297 109.656V119.355C68.0298 120.975 68.7661 122.527 70.1237 123.421C71.4759 124.311 72.8948 125.102 74.3678 125.787C75.7957 126.451 77.4514 126.299 78.819 125.521L83.071 123.077C84.6969 122.136 85.6974 120.404 85.6974 118.53V101.192C85.6974 99.315 84.6925 97.5799 83.0602 96.6397L67.3564 87.5947ZM100.976 65.6289C100.86 65.5808 100.727 65.5905 100.617 65.6533L91.6421 70.8125C91.6378 70.815 91.6327 70.8179 91.6283 70.8203C91.6247 70.8223 91.621 70.8241 91.6175 70.8262L90.5853 71.4199C89.6044 71.9836 88.3956 71.9836 87.4147 71.4199L86.3697 70.8193L86.3579 70.8125L78.8417 66.4922C77.47 65.7038 75.804 65.5468 74.3688 66.2138C72.8953 66.8987 71.4763 67.6896 70.1237 68.5801C68.7659 69.474 68.0297 71.0269 68.0297 72.6474V77.3535C68.0299 79.2308 69.0356 80.9651 70.6679 81.9053L86.3539 90.9404C87.9908 91.8832 90.0092 91.8832 91.6461 90.9404L107.332 81.9053C108.96 80.9675 109.965 79.2389 109.97 77.3672V73.5537C109.968 72.0321 109.316 70.5666 108.091 69.6562C105.91 68.0354 103.523 66.679 100.976 65.6289Z" fill="#133EE3"/>
+</svg></div>
+    <button data-nav="home" class="on" data-tip="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg></button>
+    <button data-nav="quote" data-tip="New quote / booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3.5" width="16" height="17" rx="3"/><path d="M8.5 9h7M8.5 13h7M8.5 17h4"/></svg></button>
+    <button data-nav="shipments" data-tip="Shipments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></svg></button>
+    <div class="sp"></div>
+    <button id="settingsBtn" data-tip="Freddy settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+  </nav>
+
+  <aside class="freddy-wrap" id="fw">
+    <div class="freddy-glow"></div>
+    <div class="freddy pre" id="freddy">
+      <header class="f-head">
+        <div class="f-id"><span class="f-mark"><svg aria-hidden="true" viewBox="34 34 110 124" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M87.4147 36.4228C88.3956 35.8591 89.6044 35.8591 90.5853 36.4228L103.43 43.8056C104.411 44.3694 105.014 45.4108 105.014 46.538V47.7382L105.015 47.7529V56.8564C105.015 58.9043 106.226 60.7391 108.011 61.7558C108.444 62.0024 108.872 62.2573 109.295 62.5195C111.092 63.6341 113.364 63.8022 115.198 62.751L124.399 57.4619C125.38 56.8982 126.589 56.8982 127.57 57.4619L140.415 64.8447C141.396 65.4084 142 66.4506 142 67.5781V82.3428C142 83.4703 141.396 84.5124 140.415 85.0762L139.384 85.6689L139.371 85.6768L139.358 85.6836L128.627 91.8516C128.619 91.8562 128.61 91.8606 128.602 91.8652L127.57 92.459C126.589 93.0227 125.38 93.0227 124.399 92.459L123.355 91.8584L123.344 91.8516L115.932 87.5918C114.296 86.6514 112.279 86.6528 110.644 87.5947L94.9398 96.6397C93.3075 97.5799 92.3017 99.315 92.3017 101.192V118.53C92.3017 120.409 93.309 122.145 94.9428 123.085L100.623 126.35C100.731 126.41 100.862 126.419 100.976 126.372C103.523 125.322 105.91 123.966 108.091 122.345C109.316 121.434 109.968 119.969 109.97 118.447V109.656C109.97 108.529 110.575 107.488 111.556 106.924L124.399 99.541C125.38 98.9773 126.589 98.9773 127.57 99.541L140.415 106.924C141.395 107.488 142 108.529 142 109.656V124.422C142 125.549 141.396 126.592 140.415 127.155L139.384 127.748L139.358 127.763L128.627 133.931C128.619 133.935 128.61 133.94 128.602 133.944L127.57 134.538C126.589 135.102 125.38 135.102 124.399 134.538L123.355 133.938L123.344 133.931L115.205 129.253C113.37 128.198 111.095 128.366 109.296 129.481C108.873 129.744 108.445 129.998 108.011 130.245C106.226 131.262 105.015 133.097 105.015 135.145V144.247L105.014 144.262V145.461C105.014 146.588 104.411 147.631 103.43 148.194L102.398 148.787C102.39 148.792 102.382 148.797 102.373 148.802L91.6421 154.97C91.6341 154.974 91.6255 154.979 91.6175 154.983L90.5853 155.577C89.6044 156.141 88.3956 156.141 87.4147 155.577L86.3697 154.977L86.3579 154.97L75.6268 148.802L75.6169 148.796L74.5699 148.194C73.5892 147.631 72.9847 146.588 72.9847 145.461V135.849C72.9789 133.737 71.6891 131.861 69.8131 130.873C69.1786 130.539 68.5537 130.188 67.939 129.82C66.1518 128.752 63.9179 128.608 62.1125 129.646L54.6565 133.931L54.6447 133.938L53.5996 134.538C52.619 135.102 51.4107 135.102 50.4301 134.538L49.3851 133.938L49.3732 133.931L38.6421 127.763L38.6323 127.757L37.5853 127.155C36.6044 126.592 36 125.549 36 124.422V109.656C36.0002 108.529 36.6046 107.488 37.5853 106.924L45.9681 102.105C47.7839 101.06 48.7743 99.0432 48.7235 96.9551C48.7158 96.6374 48.7117 96.3194 48.7117 96.001C48.7117 95.6821 48.7158 95.3631 48.7235 95.0449C48.7743 92.9555 47.7832 90.9377 45.9651 89.8926L38.6421 85.6836L38.6342 85.6787L37.5853 85.0762C36.6044 84.5124 36 83.4703 36 82.3428V67.5781C36 66.4506 36.6044 65.4084 37.5853 64.8447L50.4301 57.4619C51.4108 56.8983 52.6189 56.8984 53.5996 57.4619L62.1224 62.3603C63.9262 63.3923 66.1558 63.2472 67.94 62.1806C68.5544 61.8134 69.179 61.4618 69.8131 61.1279C71.6891 60.1401 72.9789 58.264 72.9847 56.1523V46.538C72.9848 45.4108 73.5893 44.3693 74.5699 43.8056L87.4147 36.4228ZM67.3564 87.5947C65.7211 86.6529 63.7044 86.6515 62.0682 87.5918L57.8783 90C56.4773 90.8052 55.4978 92.2037 55.39 93.8106C55.3412 94.5376 55.317 95.2686 55.317 96.001C55.317 96.7326 55.3413 97.4621 55.39 98.1885C55.4972 99.7903 56.4707 101.186 57.8645 101.992L66.4444 106.924C67.4252 107.488 68.0295 108.529 68.0297 109.656V119.355C68.0298 120.975 68.7661 122.527 70.1237 123.421C71.4759 124.311 72.8948 125.102 74.3678 125.787C75.7957 126.451 77.4514 126.299 78.819 125.521L83.071 123.077C84.6969 122.136 85.6974 120.404 85.6974 118.53V101.192C85.6974 99.315 84.6925 97.5799 83.0602 96.6397L67.3564 87.5947ZM100.976 65.6289C100.86 65.5808 100.727 65.5905 100.617 65.6533L91.6421 70.8125C91.6378 70.815 91.6327 70.8179 91.6283 70.8203C91.6247 70.8223 91.621 70.8241 91.6175 70.8262L90.5853 71.4199C89.6044 71.9836 88.3956 71.9836 87.4147 71.4199L86.3697 70.8193L86.3579 70.8125L78.8417 66.4922C77.47 65.7038 75.804 65.5468 74.3688 66.2138C72.8953 66.8987 71.4763 67.6896 70.1237 68.5801C68.7659 69.474 68.0297 71.0269 68.0297 72.6474V77.3535C68.0299 79.2308 69.0356 80.9651 70.6679 81.9053L86.3539 90.9404C87.9908 91.8832 90.0092 91.8832 91.6461 90.9404L107.332 81.9053C108.96 80.9675 109.965 79.2389 109.97 77.3672V73.5537C109.968 72.0321 109.316 70.5666 108.091 69.6562C105.91 68.0354 103.523 66.679 100.976 65.6289Z" fill="#FFFFFF"/>
+</svg></span><div><b>Freddy</b><small id="fStatus">CSN quoting co-pilot</small></div></div>
+        <div class="f-ctrls">
+          <button id="muteBtn" title="Mute Freddy's voice" aria-label="Mute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path class="w1" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/><path class="w0" d="m16 9 6 6M22 9l-6 6" style="display:none"/></svg></button>
+          <button id="collapseBtn" title="Minimise Freddy" aria-label="Minimise"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 6-6 6 6 6"/></svg></button>
+        </div>
+      </header>
+      <button class="expand" id="expandBtn" aria-label="Open Freddy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg><span>Open Freddy</span></button>
+
+      <section class="f-welcome" id="welcome">
+        <div class="w-orb"><canvas id="wCanvas"></canvas></div>
+        <h2>Hi, I'm Freddy.</h2>
+        <p>Your CSN co-pilot. Ask me for a rate, a booking, or where a shipment is. I'll read you the best options.</p>
+        <button class="w-btn pri" id="wTalk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Tap to talk to Freddy</button>
+        <button class="w-btn sec" id="wTour"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5-11-6.5Z"/></svg>Take the tour</button>
+        <small class="w-note">Prototype · sample rates · nothing is really booked</small>
+      </section>
+
+      <div class="f-feed" id="feed"></div>
+      <div class="f-dock">
+        <div class="f-live" id="live"></div>
+        <div class="f-chips" id="chips"></div>
+        <div class="f-input">
+          <form id="askForm" autocomplete="off"><input id="askInput" placeholder="Ask Freddy anything…"><button class="send" type="submit" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></form>
+          <button class="orb-btn" id="orbBtn" aria-label="Talk to Freddy"><canvas id="orbCanvas"></canvas><svg class="ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48"/></svg></button>
+        </div>
+        <div class="f-hint">Tap the orb or hold <kbd>Space</kbd> to talk · I listen for 5s after each reply</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div class="topbar">
+      <form class="search" id="searchForm"><input id="searchInput" placeholder="Search shipment IDs, or ask Freddy…"><button class="k" type="submit" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button></form>
+      <div class="sp"></div>
+      <button class="ibtn" data-cmd="What's happening today?" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span class="dot"></span></button>
+      <div class="who"><div class="av">GA</div><div><b>GroupAir</b><br><small>South Africa</small></div></div>
+    </div>
+    <div id="view"></div>
+  </main>
+</div>
+
+<div class="modal" id="modal">
+  <div class="box">
+    <h3>Freddy settings</h3>
+    <label for="voiceSel">Voice</label>
+    <select id="voiceSel"></select>
+    <label for="rateSel">Speaking pace</label>
+    <select id="rateSel"><option value="0.95">Relaxed</option><option value="1.05" selected>Natural</option><option value="1.18">Brisk</option></select>
+    <div class="row2" style="margin-top:.8rem"><span>Listen for 5s after each reply</span><button class="switch on" id="swAuto" aria-label="Auto-listen"></button></div>
+    <div class="row2"><span>Freddy speaks out loud</span><button class="switch on" id="swVoice" aria-label="Voice"></button></div>
+    <div class="foot"><button class="btn" id="tourBtn">Replay tour</button><button class="btn" id="resetBtn">Reset</button><button class="btn pri" id="closeModal">Done</button></div>
+  </div>
+</div>
+<div class="toasts" id="toasts"></div>
+<script>
+const LOGO_FULL = "<svg aria-hidden=\"true\" viewBox=\"44 44 232 88\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M163.664 64C167.89 64 171.73 64.7854 175.183 66.3563C178.695 67.8691 181.433 69.9637 183.398 72.64L176.522 80.8436C175.689 79.7382 174.647 78.72 173.397 77.7891C172.147 76.8582 170.777 76.1309 169.289 75.6073C167.86 75.0837 166.372 74.8218 164.824 74.8218C162.384 74.8218 160.211 75.4037 158.306 76.5673C156.401 77.6728 154.912 79.2437 153.841 81.28C152.769 83.2582 152.234 85.4982 152.234 88C152.234 90.4436 152.799 92.6545 153.93 94.6327C155.061 96.6109 156.579 98.1819 158.484 99.3455C160.389 100.509 162.503 101.091 164.824 101.091C166.372 101.091 167.831 100.887 169.2 100.48C170.629 100.015 171.938 99.3455 173.129 98.4728C174.32 97.6001 175.451 96.5818 176.522 95.4182L183.398 103.622C181.433 106.124 178.635 108.16 175.004 109.731C171.432 111.244 167.652 112 163.664 112C159.139 112 155.091 110.953 151.519 108.858C147.947 106.764 145.12 103.913 143.036 100.305C141.012 96.64 140 92.5673 140 88.0873C140 83.4909 141.012 79.3891 143.036 75.7818C145.12 72.1164 147.947 69.2364 151.519 67.1419C155.091 65.0473 159.139 64 163.664 64Z\" fill=\"#10103E\"/>\n<path d=\"M204.918 64C207.358 64 209.71 64.2909 211.972 64.8727C214.294 65.4545 216.437 66.2982 218.401 67.4037C220.425 68.4509 222.182 69.7018 223.67 71.1564L216.883 78.5745C215.812 77.5273 214.591 76.6255 213.222 75.8692C211.853 75.0546 210.484 74.4146 209.115 73.9491C207.745 73.4255 206.495 73.1637 205.364 73.1637C204.352 73.1637 203.429 73.2509 202.596 73.4255C201.822 73.6 201.167 73.8909 200.631 74.2982C200.096 74.6473 199.679 75.0836 199.381 75.6073C199.143 76.1309 199.024 76.7128 199.024 77.3528C199.024 77.9928 199.173 78.6037 199.471 79.1855C199.828 79.7091 200.304 80.2036 200.899 80.6691C201.495 81.0182 202.447 81.4255 203.757 81.891C205.126 82.3564 206.882 82.88 209.025 83.4618C211.883 84.2182 214.294 85.0618 216.258 85.9927C218.223 86.9236 219.8 88 220.991 89.2219C222.062 90.2691 222.807 91.4909 223.223 92.8873C223.7 94.2255 223.938 95.68 223.938 97.2509C223.938 100.102 223.104 102.662 221.437 104.931C219.83 107.142 217.598 108.887 214.74 110.167C211.942 111.389 208.757 112 205.186 112C200.84 112 196.94 111.302 193.488 109.905C190.094 108.509 187.326 106.531 185.183 103.971L193.131 97.3382C194.976 99.2582 197 100.655 199.203 101.527C201.465 102.342 203.757 102.749 206.078 102.749C206.912 102.749 207.686 102.662 208.4 102.487C209.115 102.255 209.74 101.964 210.275 101.615C210.811 101.207 211.198 100.742 211.436 100.218C211.734 99.6946 211.883 99.0837 211.883 98.3855C211.883 97.1055 211.347 96.1164 210.275 95.4182C209.799 95.0691 208.906 94.6909 207.597 94.2837C206.346 93.8182 204.739 93.3237 202.775 92.8C199.738 92.0437 197.179 91.1709 195.095 90.1818C193.011 89.1346 191.315 87.9418 190.005 86.6036C188.934 85.4982 188.1 84.2182 187.505 82.7637C186.969 81.3091 186.701 79.7091 186.701 77.9636C186.701 75.1709 187.535 72.7273 189.201 70.6327C190.868 68.5382 193.071 66.9092 195.809 65.7455C198.607 64.5819 201.643 64 204.918 64Z\" fill=\"#10103E\"/>\n<path d=\"M255.748 64C259.32 64 262.297 64.6982 264.678 66.0946C267.119 67.4909 268.934 69.6146 270.125 72.4655C271.375 75.2582 272 78.7491 272 82.9382V111.127H259.32V83.8109C259.32 81.7164 259.022 79.9709 258.427 78.5745C257.832 77.1782 256.939 76.16 255.748 75.52C254.558 74.88 253.039 74.5891 251.194 74.6473C249.765 74.6473 248.456 74.88 247.265 75.3455C246.074 75.7528 245.003 76.3636 244.05 77.1782C243.157 77.9927 242.473 78.9236 241.997 79.9709C241.52 81.0182 241.282 82.1818 241.282 83.4618V111.127H228.602V64.9601H240.836L241.063 70.969C241.403 70.555 241.774 70.152 242.175 69.76C243.901 68.0146 245.955 66.6182 248.337 65.5709C250.718 64.5236 253.188 64 255.748 64Z\" fill=\"#10103E\"/>\n<path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M81.9533 48.2819C82.601 47.906 83.399 47.906 84.0467 48.2819L92.5291 53.2036C93.1768 53.5795 93.5758 54.274 93.5758 55.0256V55.8257C93.5758 55.829 93.5759 55.8323 93.5759 55.8356V61.9045C93.5759 63.2698 94.3753 64.4929 95.5545 65.1707C95.8405 65.3351 96.123 65.5048 96.4022 65.6796C97.5889 66.4228 99.0891 66.5348 100.301 65.8339L106.377 62.308C107.025 61.9322 107.823 61.9322 108.471 62.308L116.953 67.2298C117.601 67.6057 118 68.3002 118 69.0519V69.8487C118 69.8531 118 69.8575 118 69.8619V78.0859C118 78.0891 118 78.0923 118 78.0956V78.8955C118 79.6471 117.601 80.3417 116.953 80.7175L116.272 81.1127C116.266 81.116 116.261 81.1194 116.255 81.1226L109.169 85.2346C109.163 85.2377 109.158 85.2405 109.153 85.2436L108.471 85.6393C107.823 86.0151 107.025 86.0151 106.377 85.6393L105.687 85.2389C105.685 85.2374 105.682 85.2361 105.68 85.2346L100.785 82.3947C99.7047 81.7677 98.3732 81.7683 97.2932 82.3962L86.9225 88.4263C85.8446 89.0531 85.1806 90.21 85.1806 91.4616V103.02C85.1807 104.273 85.8453 105.43 86.9242 106.057L90.6755 108.233C90.7469 108.274 90.8329 108.28 90.9087 108.248C92.5905 107.548 94.1673 106.644 95.6077 105.563C96.4167 104.956 96.8464 103.98 96.8482 102.965V97.1045C96.8482 96.3528 97.2472 95.6582 97.8949 95.2824L106.377 90.3606C107.025 89.9848 107.823 89.9848 108.471 90.3606L116.953 95.2824C117.601 95.6582 118 96.3528 118 97.1045V97.9046C118 97.9078 118 97.9111 118 97.9144V106.138C118 106.142 118 106.145 118 106.148V106.948C118 107.7 117.601 108.394 116.953 108.77L116.272 109.165C116.266 109.169 116.261 109.172 116.255 109.175L109.169 113.287C109.163 113.29 109.158 113.293 109.153 113.296L108.471 113.692C107.823 114.068 107.025 114.068 106.377 113.692L105.687 113.291C105.685 113.29 105.682 113.289 105.68 113.287L100.305 110.169C99.093 109.465 97.5908 109.577 96.4028 110.321C96.1235 110.496 95.8406 110.666 95.5544 110.83C94.3752 111.508 93.5759 112.731 93.5759 114.096V120.165C93.5759 120.168 93.5758 120.171 93.5758 120.174V120.974C93.5758 121.726 93.1768 122.421 92.5291 122.796L91.8479 123.191C91.8424 123.195 91.8369 123.198 91.8314 123.201L84.7446 127.313C84.7393 127.316 84.7338 127.319 84.7285 127.322L84.0467 127.718C83.399 128.094 82.601 128.094 81.9533 127.718L81.2632 127.318C81.2606 127.316 81.258 127.315 81.2555 127.313L74.1687 123.201C74.1665 123.2 74.1643 123.199 74.1622 123.197L73.4708 122.796C72.8231 122.421 72.4241 121.726 72.4241 120.974V114.566C72.4202 113.158 71.5683 111.907 70.3294 111.249C69.9104 111.026 69.4976 110.792 69.0916 110.547C67.9113 109.834 66.4362 109.739 65.2439 110.43L60.3206 113.287C60.318 113.288 60.3153 113.29 60.3127 113.291L59.6227 113.692C58.9749 114.068 58.1769 114.068 57.5292 113.692L56.8391 113.291C56.8366 113.29 56.8339 113.289 56.8314 113.287L49.7446 109.175C49.7424 109.174 49.7403 109.172 49.7381 109.171L49.0467 108.77C48.399 108.394 48 107.7 48 106.948V97.1045C48 96.3528 48.399 95.6582 49.0467 95.2824L54.5829 92.0701C55.782 91.3729 56.4361 90.0288 56.4025 88.6368C56.3974 88.4249 56.3948 88.2129 56.3948 88.0005C56.3948 87.7879 56.3974 87.5756 56.4025 87.3634C56.4361 85.9704 55.7812 84.6252 54.5804 83.9285L49.7446 81.1226C49.7429 81.1216 49.7412 81.1205 49.7394 81.1195L49.0467 80.7175C48.399 80.3417 48 79.6471 48 78.8955V69.0519C48 68.3002 48.399 67.6057 49.0467 67.2298L57.5292 62.308C58.1769 61.9322 58.9749 61.9322 59.6227 62.308L65.2506 65.5736C66.4418 66.2616 67.9139 66.1649 69.0922 65.4539C69.498 65.2089 69.9106 64.9749 70.3294 64.7523C71.5684 64.0938 72.4203 62.8429 72.4241 61.4351V55.0256C72.4241 54.274 72.8231 53.5795 73.4708 53.2036L81.9533 48.2819ZM68.7067 82.3962C67.6268 81.7683 66.2952 81.7677 65.2147 82.3947L62.4478 84.0002C61.5226 84.537 60.8758 85.4694 60.8047 86.5407C60.7725 87.0254 60.7563 87.5123 60.7563 88.0005C60.7563 88.4884 60.7724 88.9749 60.8046 89.4592C60.8754 90.5271 61.5183 91.4569 62.4387 91.9946L68.105 95.2824C68.7527 95.6582 69.1517 96.3528 69.1517 97.1045V97.9046C69.1518 97.9078 69.1518 97.9111 69.1518 97.9144V103.569C69.1518 104.65 69.638 105.685 70.5347 106.281C71.4277 106.874 72.3642 107.401 73.3369 107.858C74.2799 108.3 75.3735 108.199 76.2768 107.68L79.0843 106.051C80.1581 105.424 80.8192 104.269 80.8193 103.02V91.4616C80.8192 90.21 80.1554 89.0532 79.0774 88.4264L68.7067 82.3962ZM90.9087 67.7528C90.8317 67.7207 90.7442 67.7271 90.672 67.769L84.7446 71.2083C84.7393 71.2114 84.7338 71.2144 84.7285 71.2174L84.0467 71.613C83.399 71.9889 82.601 71.9889 81.9533 71.613L81.2632 71.2126C81.2606 71.2112 81.258 71.2098 81.2555 71.2083L76.2914 68.3279C75.3855 67.8023 74.2856 67.6977 73.3378 68.1424C72.3648 68.599 71.428 69.1267 70.5348 69.7204C69.6381 70.3163 69.1519 71.3511 69.1518 72.4315V75.5688C69.1519 76.8204 69.8158 77.9771 70.8937 78.6039L81.2526 84.6272C82.3336 85.2557 83.6663 85.2557 84.7473 84.6272L95.1064 78.6038C96.1815 77.9786 96.8447 76.8263 96.8482 75.5785V73.0357C96.8463 72.0213 96.4167 71.0447 95.6077 70.4377C94.1673 69.3571 92.5905 68.4529 90.9087 67.7528Z\" fill=\"#133EE3\"/>\n</svg>";
+'use strict';
+/* =========================================================
+   Freddy — CSN voice co-pilot (prototype, no backend)
+   ========================================================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const money = (n, d = 2) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const money0 = n => '$' + Math.round(n).toLocaleString('en-US');
+const sayMoney = n => n >= 100 ? money0(n) : money(n);
+const strip = h => h.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+function seeded(str) { let h = 1779033703 ^ str.length; for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19; } return () => { h = Math.imul(h ^ h >>> 16, 2246822507); h = Math.imul(h ^ h >>> 13, 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; }; }
+
+/* ---------------- data ---------------- */
+const AIRPORT_DATA = `LHR|London|Heathrow|United Kingdom|51.47|-0.45|london,heathrow,london heathrow
+MAN|Manchester|Manchester|United Kingdom|53.35|-2.27|manchester
+DXB|Dubai|Dubai Intl|UAE|25.25|55.36|dubai
+AUH|Abu Dhabi|Zayed Intl|UAE|24.43|54.65|abu dhabi
+DOH|Doha|Hamad Intl|Qatar|25.27|51.61|doha
+JNB|Johannesburg|O.R. Tambo|South Africa|-26.13|28.24|johannesburg,joburg,jo'burg,jozi,or tambo,jo burg
+CPT|Cape Town|Cape Town Intl|South Africa|-33.97|18.6|cape town
+DUR|Durban|King Shaka|South Africa|-29.61|31.12|durban
+NBO|Nairobi|Jomo Kenyatta|Kenya|-1.32|36.93|nairobi
+ADD|Addis Ababa|Bole Intl|Ethiopia|8.98|38.8|addis ababa,addis
+LOS|Lagos|Murtala Muhammed|Nigeria|6.58|3.32|lagos
+CAI|Cairo|Cairo Intl|Egypt|30.12|31.41|cairo
+HKG|Hong Kong|Hong Kong Intl|Hong Kong|22.31|113.91|hong kong
+PVG|Shanghai|Pudong|China|31.14|121.81|shanghai,pudong
+CAN|Guangzhou|Baiyun|China|23.39|113.3|guangzhou
+SIN|Singapore|Changi|Singapore|1.36|103.99|singapore,changi
+BKK|Bangkok|Suvarnabhumi|Thailand|13.69|100.75|bangkok
+DEL|Delhi|Indira Gandhi Intl|India|28.56|77.1|delhi,new delhi
+BOM|Mumbai|Chhatrapati Shivaji|India|19.09|72.87|mumbai,bombay
+BLR|Bengaluru|Kempegowda|India|13.2|77.71|bengaluru,bangalore
+MAA|Chennai|Chennai Intl|India|12.99|80.17|chennai,madras
+COK|Kochi|Cochin Intl|India|10.15|76.4|kochi,cochin
+SGN|Ho Chi Minh City|Tan Son Nhat|Vietnam|10.82|106.66|ho chi minh city,ho chi minh,saigon
+ICN|Seoul|Incheon|South Korea|37.46|126.44|seoul,incheon
+NRT|Tokyo|Narita|Japan|35.77|140.39|tokyo,narita
+SYD|Sydney|Kingsford Smith|Australia|-33.94|151.18|sydney
+MEL|Melbourne|Tullamarine|Australia|-37.67|144.84|melbourne
+FRA|Frankfurt|Frankfurt Main|Germany|50.03|8.57|frankfurt
+AMS|Amsterdam|Schiphol|Netherlands|52.31|4.76|amsterdam,schiphol
+CDG|Paris|Charles de Gaulle|France|49.01|2.55|paris
+MAD|Madrid|Barajas|Spain|40.47|-3.56|madrid
+MXP|Milan|Malpensa|Italy|45.63|8.72|milan
+IST|Istanbul|Istanbul Airport|Turkey|41.26|28.74|istanbul
+JFK|New York|JFK|USA|40.64|-73.78|new york,nyc
+ORD|Chicago|O'Hare|USA|41.97|-87.9|chicago,o'hare
+LAX|Los Angeles|LAX|USA|33.94|-118.41|los angeles
+MIA|Miami|Miami Intl|USA|25.79|-80.29|miami
+SFO|San Francisco|SFO|USA|37.62|-122.38|san francisco
+YYZ|Toronto|Pearson|Canada|43.68|-79.63|toronto
+MEX|Mexico City|Benito Juárez|Mexico|19.44|-99.07|mexico city
+GRU|São Paulo|Guarulhos|Brazil|-23.43|-46.47|sao paulo,são paulo
+KTM|Kathmandu|Tribhuvan|Nepal|27.7|85.36|kathmandu|remote`;
+const AP = {};
+AIRPORT_DATA.split('\n').forEach(l => { const [code, city, name, country, lat, lon, al, flag] = l.split('|'); AP[code] = { code, city, name, country, lat: +lat, lon: +lon, alias: al.split(','), remote: flag === 'remote' }; });
+const AMBIG = new Set(['man', 'can', 'add', 'sin', 'mad', 'los', 'del', 'mel', 'bom', 'doh', 'mia', 'ist', 'cok', 'max']);
+const COUNTRIES = {
+  'india': ['DEL', 'BOM', 'BLR', 'MAA', 'COK'], 'south africa': ['JNB', 'CPT', 'DUR'], 'china': ['PVG', 'CAN'],
+  'usa': ['JFK', 'ORD', 'LAX', 'MIA', 'SFO'], 'united states': ['JFK', 'ORD', 'LAX', 'MIA', 'SFO'], 'america': ['JFK', 'ORD', 'LAX', 'MIA', 'SFO'], 'the states': ['JFK', 'ORD', 'LAX', 'MIA', 'SFO'],
+  'uk': ['LHR', 'MAN'], 'united kingdom': ['LHR', 'MAN'], 'england': ['LHR', 'MAN'], 'britain': ['LHR', 'MAN'],
+  'uae': ['DXB', 'AUH'], 'united arab emirates': ['DXB', 'AUH'], 'australia': ['SYD', 'MEL'],
+  'germany': ['FRA'], 'japan': ['NRT'], 'vietnam': ['SGN'], 'kenya': ['NBO'], 'nigeria': ['LOS'], 'egypt': ['CAI'], 'brazil': ['GRU'],
+  'canada': ['YYZ'], 'mexico': ['MEX'], 'france': ['CDG'], 'netherlands': ['AMS'], 'holland': ['AMS'], 'spain': ['MAD'], 'italy': ['MXP'],
+  'turkey': ['IST'], 'thailand': ['BKK'], 'korea': ['ICN'], 'south korea': ['ICN'], 'ethiopia': ['ADD'], 'nepal': ['KTM']
+};
+const CARRIERS = [
+  { id: 'EK', name: 'Emirates SkyCargo', short: 'Emirates', hub: 'DXB', color: '#D71921', f: 1.02, dg: true, alias: ['emirates skycargo', 'emirates', 'skycargo'] },
+  { id: 'QR', name: 'Qatar Airways Cargo', short: 'Qatar Airways', hub: 'DOH', color: '#5C0632', f: .97, dg: true, alias: ['qatar airways cargo', 'qatar airways', 'qatar cargo', 'qatar'] },
+  { id: 'EY', name: 'Etihad Cargo', short: 'Etihad', hub: 'AUH', color: '#9C7A35', f: .93, dg: true, alias: ['etihad cargo', 'etihad'] },
+  { id: 'TK', name: 'Turkish Cargo', short: 'Turkish Cargo', hub: 'IST', color: '#C70A0C', f: .86, dg: true, alias: ['turkish cargo', 'turkish airlines', 'turkish'] },
+  { id: 'LH', name: 'Lufthansa Cargo', short: 'Lufthansa', hub: 'FRA', color: '#05164D', f: 1.12, dg: true, alias: ['lufthansa cargo', 'lufthansa'] },
+  { id: 'CX', name: 'Cathay Cargo', short: 'Cathay', hub: 'HKG', color: '#00645A', f: 1.05, dg: true, alias: ['cathay pacific', 'cathay cargo', 'cathay'] },
+  { id: 'SQ', name: 'Singapore Airlines Cargo', short: 'Singapore Airlines', hub: 'SIN', color: '#E08D00', f: 1.0, dg: true, alias: ['singapore airlines cargo', 'singapore airlines', 'sia cargo'] },
+  { id: 'CZ', name: 'China Southern Airlines', short: 'China Southern', hub: 'CAN', color: '#0B6FB8', f: .82, dg: false, alias: ['china southern airlines', 'china southern'] },
+  { id: 'ET', name: 'Ethiopian Cargo', short: 'Ethiopian', hub: 'ADD', color: '#1F8A3C', f: .8, dg: true, alias: ['ethiopian airlines', 'ethiopian cargo', 'ethiopian'] },
+  { id: 'BA', name: 'IAG Cargo · British Airways', short: 'British Airways', hub: 'LHR', color: '#1D4F91', f: 1.15, dg: true, alias: ['british airways', 'iag cargo', 'iag'] },
+  { id: 'AF', name: 'Air France KLM Martinair', short: 'AF-KLM', hub: 'AMS', color: '#00A1DE', f: 1.08, dg: true, alias: ['air france klm', 'air france', 'martinair', 'klm'] },
+  { id: 'KQ', name: 'Kenya Airways Cargo', short: 'Kenya Airways', hub: 'NBO', color: '#B5121B', f: .87, dg: false, alias: ['kenya airways'] },
+  { id: 'SA', name: 'South African Airways Cargo', short: 'SAA Cargo', hub: 'JNB', color: '#0A3A6B', f: 1.0, dg: true, alias: ['south african airways', 'saa cargo', 'saa'] },
+  { id: 'AI', name: 'Air India Cargo', short: 'Air India', hub: 'DEL', color: '#C8102E', f: .9, dg: false, alias: ['air india'] },
+  { id: 'UA', name: 'United Cargo', short: 'United Cargo', hub: 'ORD', color: '#0033A0', f: 1.1, dg: true, alias: ['united cargo', 'united airlines'] },
+  { id: 'D0', name: 'DHL Aviation', short: 'DHL Aviation', global: true, express: true, color: '#D40511', f: 1.48, dg: true, alias: ['dhl aviation', 'dhl'], service: 'ACP : Express Priority' },
+  { id: 'AZ', name: 'Aztec', short: 'Aztec', global: true, multi: true, color: '#1F3CF0', f: .9, dg: true, alias: ['aztec'], service: 'CSN Multi-carrier · Single AWB' },
+  { id: 'WC', name: 'World Cargo Brokers', short: 'World Cargo Brokers', global: true, roq: true, color: '#475569', f: 1, dg: true, alias: ['world cargo brokers'], service: 'GSA · General' }
+];
+const CR = Object.fromEntries(CARRIERS.map(c => [c.id, c]));
+const CARRIER_ALIASES = CARRIERS.flatMap(c => c.alias.map(a => [a, c.id])).sort((a, b) => b[0].length - a[0].length);
+const AIRPORT_ALIASES = Object.values(AP).flatMap(a => a.alias.map(x => [x, a.code])).sort((a, b) => b[0].length - a[0].length);
+const COUNTRY_ALIASES = Object.keys(COUNTRIES).sort((a, b) => b.length - a.length);
+
+function hav(a, b) { const R = 6371, t = Math.PI / 180, dLa = (b.lat - a.lat) * t, dLo = (b.lon - a.lon) * t; const x = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * t) * Math.cos(b.lat * t) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); }
+
+const now = new Date();
+function hoursAgo(h) { return new Date(Date.now() - h * 3600e3); }
+const SHIPMENTS = [
+  { id: '423344', o: 'SGN', d: 'SFO', via: 'HKG', carrier: 'Cathay Cargo', status: 'In customs', grp: 'tr', pcs: 4, kg: 612, done: 6, alert: 'Held by US customs at SFO for 2 days — awaiting commercial invoice', age: 96 },
+  { id: '275063', o: 'JNB', d: 'BOM', via: 'ADD', carrier: 'Ethiopian Cargo', status: 'Departed hub', grp: 'tr', pcs: 2, kg: 180, done: 5, age: 30 },
+  { id: '290114', o: 'DUR', d: 'AMS', via: 'JNB', carrier: 'AF-KLM Martinair', status: 'Manifested', grp: 'tr', pcs: 6, kg: 940, done: 2, age: 14 },
+  { id: '301877', o: 'JNB', d: 'JFK', via: 'DOH', carrier: 'Qatar Airways Cargo', status: 'In flight', grp: 'tr', pcs: 3, kg: 410, done: 3, age: 20 },
+  { id: '481494', o: 'JNB', d: 'DXB', carrier: 'Emirates SkyCargo', status: 'Arrived', grp: 'dl', pcs: 1, kg: 95, done: 4, age: 40 },
+  { id: '271962', o: 'CPT', d: 'FRA', carrier: 'Lufthansa Cargo', status: 'Delivered', grp: 'dl', pcs: 5, kg: 720, done: 7, age: 120 },
+  { id: '268830', o: 'JNB', d: 'NBO', carrier: 'Kenya Airways Cargo', status: 'Delivered', grp: 'dl', pcs: 2, kg: 140, done: 7, age: 150 },
+  { id: '302410', o: 'JNB', d: 'PVG', via: 'HKG', carrier: 'Cathay Cargo', status: 'Awaiting cargo', grp: 'np', pcs: 8, kg: 1250, done: 0, age: 6 },
+  { id: '302455', o: 'CPT', d: 'LHR', carrier: 'IAG Cargo · British Airways', status: 'Awaiting cargo', grp: 'np', pcs: 2, kg: 260, done: 0, age: 4 },
+  { id: '3278', o: 'LHR', d: 'HKG', via: 'ADD', carrier: 'Aztec', status: 'Booked', grp: 'np', pcs: 1, kg: 100, done: 0, age: 2 }
+];
+const GRP = { np: ['Not presented', 'np'], tr: ['In transit', 'tr'], dl: ['Delivered', 'dl'] };
+
+/* ---------------- state ---------------- */
+const S = {
+  muted: false, autoListen: true, listening: false, speaking: false, thinking: false,
+  view: 'home', viewArg: null, q: null, opts: [], sort: 'value', sel: null, expanded: null, excludedDG: 0,
+  pending: null, margin: 12, marginSet: false, customer: null, sent: false, quoteNo: 24817, shipSeq: 3301,
+  demo: false, lastBooked: null, filter: 'all', touched: Date.now(), started: false, rate: 1.05
+};
+function defaultReady() { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(10, 0, 0, 0); return d; }
+function newQuote() { return { origin: null, destination: null, weight: null, pieces: null, unit: null, dims: null, dimsAsked: false, cargo: 'General Cargo', un: null, unAsked: false, product: 'A2A', postAsked: false, post: null, ready: defaultReady(), readyLabel: 'Tomorrow', readyAssumed: true, screened: false, stackable: null, desc: null, carrier: null, changed: [] }; }
+
+/* ---------------- NLU ---------------- */
+const NUMW = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+const NW = Object.keys(NUMW).join('|');
+const NUM_RX = new RegExp(`\\b(?:${NW})(?:[\\s-]+(?:and[\\s-]+)?(?:${NW}|hundred|thousand))*\\b|\\b(?:a|one)\\s+(?:hundred|thousand)(?:[\\s-]+(?:and[\\s-]+)?(?:${NW}|hundred|thousand))*\\b`, 'gi');
+function wordsToDigits(t) {
+  return t.replace(NUM_RX, m => {
+    let total = 0, cur = 0;
+    m.toLowerCase().split(/[\s-]+/).forEach(w => {
+      if (w === 'and') return; if (w === 'a') { cur = 1; return; }
+      if (w in NUMW) cur += NUMW[w]; else if (w === 'hundred') cur = (cur || 1) * 100; else if (w === 'thousand') { total += (cur || 1) * 1000; cur = 0; }
+    });
+    return String(total + cur);
+  });
+}
+const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const UNIT_RX = 'pieces|piece|pcs|pc|boxes|box|cartons|carton|pallets|pallet|crates|crate|packages|package|pkgs|skids|skid|parcels|parcel|drums|drum|cases|case|ulds|uld';
+const RX = {
+  reset: /\b(start over|start again|reset|clear (it|that|everything)|forget (it|that)|new quote|another quote|fresh quote|cancel (that|it|the quote))\b/,
+  yes: /^(yes|yeah|yep|yup|ya|sure|ok|okay|go ahead|go for it|do it|confirm|confirmed|please do|absolutely|definitely|lock it|book it|sounds good|perfect|great|let'?s do it|yes please|correct|that'?s right|right)\b/,
+  no: /^(no|nope|nah|not now|not yet|later|don'?t|hold off|leave it|never mind|nevermind)\b/,
+  skip: /\b(skip|no idea|don'?t know|dunno|not sure|no dims|no dimensions|no thanks|leave it|nope|none|n\/a)\b/,
+  greet: /^(hi|hey|hello|hiya|yo|good (morning|afternoon|evening)|morning|afternoon)\b(?!.*\b(quote|kg|kilo|to)\b)/,
+  brief: /\b(what'?s (on|up|happening|new|going on)|brief( me)?|briefing|rundown|catch me up|update me|anything (i should know|urgent|important)|how are we doing|my day|today)\b/,
+  track: /\b(track|tracking|where'?s|where is|status of|trace|locate|update on)\b/,
+  chase: /\b(chase|follow up|follow-up|nudge|escalate|ping (them|the handler|ops))\b/,
+  ships: /\b(in transit|in the air|in customs|delivered|not presented|show (me )?(my )?shipments|all shipments|my shipments|active bookings|bookings)\b/,
+  help: /\b(help|what can you do|how does this work|what do i say|what can i say)\b/,
+  thanks: /\b(thanks|thank you|cheers|nice one|brilliant|awesome|legend)\b/,
+  book: /\b(book|lock (it|that|in)|reserve|confirm (it|the booking))\b/,
+  rate: /\b(rate request|negotiate|better (rate|price|deal)|lower|cheaper rate|counter|beat (it|that|this)|discount|get (it|them) down|squeeze|spot rate|\d+ ?(%|percent) off)\b/,
+  margin: /\b(margin|mark ?up|markup|on top)\b/,
+  send: /\b(send|email|e-mail|share|forward|whatsapp)\b/,
+  hold: /\b(hold|save|bookmark|shortlist|park)\b/,
+  compare: /\b(compare|comparison|difference|versus|vs)\b/,
+  readout: /\b(read (them|it|those|me)|what are (the|my) options|run me through|tell me (the )?(options|prices)|what did you find|options\?)\b/,
+  fast: /\b(fastest|quickest|soonest|urgent|earliest)\b/,
+  cheap: /\b(cheapest|lowest price|cheaper|budget)\b/,
+  green: /\b(greenest|lowest (co2|carbon|emissions)|eco|sustainable)\b/,
+  value: /\b(best value|recommend|best option|best one|what would you (pick|choose|do)|which one|your pick)\b/,
+  quote: /\b(quote|price|pricing|rates?|how much|cost|freight|ship|shipping)\b/
+};
+
+function parse(raw) {
+  let t = ' ' + raw.toLowerCase().replace(/[’‘]/g, "'").replace(/(\d),(\d{3})/g, '$1$2') + ' ';
+  t = wordsToDigits(t);
+  t = t.replace(/\b(a|an|one)\s+(pallet|box|piece|crate|carton|package|skid|drum|case|parcel)\b/g, '1 $2');
+  t = t.replace(/\b(half a (ton|tonne))\b/g, '500 kg').replace(/\bhalf a (kilo|kg)\b/g, '0.5 kg');
+  const out = { raw, slots: {}, carriers: [], airports: [], countries: [], t };
+  const S_ = out.slots;
+  // spelled codes "l h r"
+  t = t.replace(/\b([a-z])[\s.]+([a-z])[\s.]+([a-z])\b/g, (m, a, b, c) => AP[(a + b + c).toUpperCase()] ? ' ' + a + b + c + ' ' : m);
+  // description "kg of auto parts"
+  const dm = t.match(new RegExp(`(?:kg|kgs|kilos?|tonnes?|tons?|${UNIT_RX})\\s+of\\s+([a-z][a-z &'-]{2,30}?)(?=\\s+(?:from|to|ex|going|heading|ready|for|out|into|,|\\.|$)|\\s*$)`));
+  if (dm) S_.desc = dm[1].trim();
+  // carriers
+  for (const [a, id] of CARRIER_ALIASES) { const rx = new RegExp(`\\b${a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`); if (rx.test(t)) { if (!out.carriers.includes(id)) out.carriers.push(id); t = t.replace(rx, ' '); } }
+  // product
+  const prod = [[/\bdoor[\s-]to[\s-]door\b|\bd2d\b/, 'D2D'], [/\bairport[\s-]to[\s-]airport\b|\ba2a\b/, 'A2A'], [/\bdoor[\s-]to[\s-]airport\b|\bd2a\b/, 'D2A'], [/\bairport[\s-]to[\s-]door\b|\ba2d\b/, 'A2D']];
+  for (const [rx, p] of prod) if (rx.test(t)) { S_.product = p; t = t.replace(rx, ' '); }
+  if (!S_.product && /\b(collect(ion)? from|pick ?up from)\b/.test(t)) S_.product = 'D2A';
+  // dims
+  const dimRx = /(\d+(?:\.\d+)?)\s*(?:cm|mm|m|in)?\s*(?:x|by|\*|×)\s*(\d+(?:\.\d+)?)\s*(?:cm|mm|m|in)?\s*(?:x|by|\*|×)\s*(\d+(?:\.\d+)?)\s*(cm|centimet(?:er|re)s?|mm|millimet\w*|m|met(?:er|re)s?|in|inch(?:es)?)?/;
+  const dmm = t.match(dimRx);
+  if (dmm) {
+    let [l, w, h] = [+dmm[1], +dmm[2], +dmm[3]]; const u = dmm[4] || '';
+    let k = 1; if (/^mm|^milli/.test(u)) k = .1; else if (/^m$|^met/.test(u) || (!u && l <= 5 && w <= 5 && h <= 5)) k = 100; else if (/^in/.test(u)) k = 2.54;
+    S_.dims = { l: Math.round(l * k), w: Math.round(w * k), h: Math.round(h * k) }; t = t.replace(dmm[0], ' ');
+  }
+  // weight
+  let wm = t.match(/(\d+(?:\.\d+)?)\s*(kg|kgs|kilo|kilos|kilogram|kilograms|kilogrammes?)\b(\s*(each|apiece|per (piece|pallet|box|crate|carton)))?/);
+  let wk = 1;
+  if (!wm) { wm = t.match(/(\d+(?:\.\d+)?)\s*(tonnes?|tons?|t)\b(\s*(each|apiece))?/); wk = 1000; }
+  if (!wm) { wm = t.match(/(\d+(?:\.\d+)?)\s*(lbs?|pounds)\b(\s*(each|apiece))?/); wk = .4536; }
+  if (wm) { S_.weight = Math.round(+wm[1] * wk * 10) / 10; if (wm[3]) S_.perPiece = true; t = t.replace(wm[0], ' '); }
+  // pieces
+  const pm = t.match(new RegExp(`(\\d+)\\s*(?:x\\s*)?(${UNIT_RX})\\b`));
+  if (pm) { S_.pieces = +pm[1]; S_.unit = pm[2].replace(/s$/, '').replace(/^(pc|pcs)$/, 'piece').replace(/boxe$/, 'box').replace(/case$/, 'case'); t = t.replace(pm[0], ' '); }
+  // DG & cargo
+  const un = t.match(/\bun\s?-?(\d{4})\b/); if (un) { S_.un = 'UN' + un[1]; S_.cargo = 'Dangerous Goods'; t = t.replace(un[0], ' '); }
+  if (/\b(dangerous|hazardous|haz|dg|lithium|batteries|battery|flammable|aerosols?|dry ice|corrosive|explosive)\b/.test(t)) S_.cargo = 'Dangerous Goods';
+  if (/\blithium|batter(y|ies)\b/.test(t) && !S_.un) S_.unHint = 'UN3480';
+  if (/\bdry ice\b/.test(t) && !S_.un) S_.unHint = 'UN1845';
+  if (/\b(not|non)[\s-]?dangerous|no dg|not dg|general cargo\b/.test(t)) S_.cargo = 'General Cargo';
+  if (/\b(perishables?|fresh|fish|seafood|flowers|fruit|vegetables|meat)\b/.test(t)) S_.cargo = 'Perishable';
+  if (/\b(pharma|pharmaceuticals?|vaccines?|medicines?|temperature[\s-]controlled|cold chain)\b/.test(t)) S_.cargo = 'Pharma';
+  if (/\b(valuables?|gold|jewell?ery|diamonds|cash)\b/.test(t)) S_.cargo = 'Valuables';
+  if (/\b(live animals?|pets?|dogs?|cats?|horses?)\b/.test(t) && !/\b(pet food|cat food|dog food)\b/.test(t)) S_.cargo = 'Live Animals';
+  if (/\b(screened|spx|pre-?screened)\b/.test(t) && !/\bnot screened|unscreened\b/.test(t)) S_.screened = true;
+  if (/\b(not|non)[\s-]?stackable|can'?t (be )?stack|do not stack\b/.test(t)) S_.stackable = false; else if (/\bstackable\b/.test(t)) S_.stackable = true;
+  // ready date
+  const d = new Date(); d.setHours(10, 0, 0, 0);
+  if (/\b(today|tonight|asap|right now|this afternoon)\b/.test(t)) { S_.ready = new Date(Date.now() + 2 * 3600e3); S_.readyLabel = 'Today'; }
+  else if (/\btomorrow\b/.test(t)) { d.setDate(d.getDate() + 1); S_.ready = d; S_.readyLabel = 'Tomorrow'; }
+  else if (/\bnext week\b/.test(t)) { d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); S_.ready = d; S_.readyLabel = 'Next Monday'; }
+  else { const m = t.match(/\b(?:on |this |next )?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/); if (m) { const di = DAYS.indexOf(m[1]); let add = (di - d.getDay() + 7) % 7 || 7; d.setDate(d.getDate() + add); S_.ready = d; S_.readyLabel = m[1][0].toUpperCase() + m[1].slice(1, 3) + ' ' + d.getDate() + ' ' + d.toLocaleString('en-GB', { month: 'short' }); }
+    const n = t.match(/\bin (\d+) days?\b/); if (n) { d.setDate(d.getDate() + +n[1]); S_.ready = d; S_.readyLabel = fmtDate(d); } }
+  if (S_.ready) t = t.replace(/\b(ready|available)\b/g, ' ');
+  // airports by alias
+  const roleAt = (idx) => { const pre = t.slice(Math.max(0, idx - 26), idx); if (/\b(from|ex|out of|leaving|departing|origin(ating)?( from)?|collect(ion)? (from|in|at)|pick ?up (from|in|at))\s+(the\s+)?$/.test(pre)) return 'origin'; if (/\b(to|into|towards|heading to|headed to|going to|destined for|destination|deliver(ed)? (to|in))\s+(the\s+)?$/.test(pre)) return 'destination'; return null; };
+  const found = [];
+  for (const [a, code] of AIRPORT_ALIASES) { const rx = new RegExp(`\\b${a.replace(/[.'*+?^${}()|[\]\\]/g, m => m === "'" ? "'" : '\\' + m)}\\b`, 'g'); let m; while ((m = rx.exec(t))) { found.push({ code, idx: m.index, len: m[0].length }); t = t.slice(0, m.index) + ' '.repeat(m[0].length) + t.slice(m.index + m[0].length); } }
+  // IATA codes
+  const upperCodes = new Set((raw.match(/\b[A-Z]{3}\b/g) || []).filter(c => AP[c]));
+  t.replace(/\b([a-z]{3})\b/g, (m, c, idx) => { const C = c.toUpperCase(); if (AP[C] && (!AMBIG.has(c) || upperCodes.has(C))) found.push({ code: C, idx, len: 3 }); return m; });
+  // countries
+  const cfound = [];
+  for (const c of COUNTRY_ALIASES) { const rx = new RegExp(`\\b${c}\\b`); const m = t.match(rx); if (m) { cfound.push({ name: c, codes: COUNTRIES[c], idx: m.index }); t = t.replace(rx, ' '.repeat(c.length)); } }
+  found.sort((a, b) => a.idx - b.idx).forEach(f => { f.role = roleAt(f.idx); out.airports.push(f); });
+  cfound.forEach(c => { c.role = roleAt(c.idx); if (c.codes.length === 1) out.airports.push({ code: c.codes[0], idx: c.idx, role: c.role }); else out.countries.push(c); });
+  out.airports.sort((a, b) => a.idx - b.idx);
+  out.t = t;
+  return out;
+}
+function hasQuoteSlots(P) { const s = P.slots; return P.airports.length > 0 || P.countries.length > 0 || s.weight != null || !!s.dims || s.pieces != null || !!s.un || !!s.product || (s.cargo && s.cargo !== 'General Cargo'); }
+
+/* ---------------- quote engine ---------------- */
+function volW(q) { if (!q.dims) return 0; const n = q.pieces || 1; return Math.round(n * q.dims.l * q.dims.w * q.dims.h / 6000 * 10) / 10; }
+function volM3(q) { if (!q.dims) return 0; const n = q.pieces || 1; return n * q.dims.l * q.dims.w * q.dims.h / 1e6; }
+function chargeable(q) { return Math.ceil(Math.max(q.weight || 0, volW(q))); }
+function fmtDate(d) { return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
+function fmtTime(d) { return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); }
+function spokenWhen(d) {
+  const today = new Date(); today.setHours(0, 0, 0, 0); const dd = new Date(d); dd.setHours(0, 0, 0, 0);
+  const diff = Math.round((dd - today) / 864e5); const h = d.getHours();
+  const part = h < 5 ? 'early hours' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
+  const day = diff === 0 ? 'today' : diff === 1 ? 'tomorrow' : DAYS[d.getDay()][0].toUpperCase() + DAYS[d.getDay()].slice(1);
+  if (part === 'early hours') return `in the early hours of ${day === 'today' || day === 'tomorrow' ? day : day}`;
+  if (day === 'tomorrow' && part === 'night') return 'tomorrow night';
+  if (day === 'today') return part === 'night' ? 'tonight' : `this ${part}`;
+  return `${day} ${part}`;
+}
+function dur(h) { const d = Math.floor(h / 24), r = Math.round(h % 24); return d ? `${d}d ${r}h` : `${r}h`; }
+function spokenDur(h) { if (h < 36) return `${Math.round(h)} hours`; const d = Math.round(h / 12) / 2; return `${d} days`; }
+
+function generate(q) {
+  const o = AP[q.origin], d = AP[q.destination]; const dist = hav(o, d);
+  const res = { dist, opts: [], excluded: 0 };
+  if (o.remote || d.remote || q.origin === q.destination) return res;
+  const rnd = seeded(q.origin + q.destination);
+  const cw = chargeable(q);
+  let pool = CARRIERS.filter(c => !c.global).map(c => {
+    const direct = c.hub === o.code || c.hub === d.code; const h = AP[c.hub];
+    const detour = direct ? 1 : (hav(o, h) + hav(h, d)) / dist; return { c, direct, detour, score: detour + rnd() * .18 - (direct ? .25 : 0) };
+  }).filter(x => x.detour < 1.38).sort((a, b) => a.score - b.score).slice(0, 5);
+  pool = pool.concat(CARRIERS.filter(c => c.global).map(c => ({ c, direct: c.express, detour: 1 })));
+  if (q.carrier) { const pc = pool.find(p => p.c.id === q.carrier); if (!pc) { const c = CR[q.carrier]; if (c && !c.global) pool.unshift({ c, direct: c.hub === o.code || c.hub === d.code, detour: 1.2 }); } }
+  const wb = cw < 45 ? 1.38 : cw < 100 ? 1.16 : cw < 300 ? 1 : cw < 500 ? .93 : cw < 1000 ? .87 : .8;
+  const cargoF = { 'General Cargo': 1, 'Dangerous Goods': 1.32, 'Perishable': 1.14, 'Pharma': 1.45, 'Valuables': 1.7, 'Live Animals': 1.5 }[q.cargo] || 1;
+  const base = .62 + dist * .000105;
+  const hubs = CARRIERS.filter(c => c.hub && c.hub !== o.code && c.hub !== d.code).map(c => ({ c, h: AP[c.hub], det: (hav(o, AP[c.hub]) + hav(AP[c.hub], d)) / dist })).sort((a, b) => a.det - b.det);
+  pool.forEach(({ c, direct }, i) => {
+    if (q.cargo === 'Dangerous Goods' && !c.dg) { res.excluded++; return; }
+    const r = seeded(q.origin + q.destination + c.id);
+    let legs;
+    if (direct) legs = [{ from: o.code, to: d.code, by: c.short }];
+    else if (c.multi) { const a = hubs[0] || { c: CR.ET, h: AP.ADD }; const b = hubs.find(x => x.c.id !== a.c.id && x.det < 1.5); legs = b && dist > 7000 && hav(a.h, d) > hav(b.h, d) ? [{ from: o.code, to: a.h.code, by: a.c.short }, { from: a.h.code, to: b.h.code, by: b.c.short }, { from: b.h.code, to: d.code, by: b.c.short }] : [{ from: o.code, to: a.h.code, by: a.c.short }, { from: a.h.code, to: d.code, by: pick2(r, CARRIERS.filter(x => !x.global && x.id !== a.c.id)).short }]; }
+    else if (!c.hub) { const a = hubs[1] || hubs[0] || { c: CR.ET, h: AP.ADD }; legs = [{ from: o.code, to: a.h.code, by: a.c.short }, { from: a.h.code, to: d.code, by: a.c.short }]; }
+    else legs = [{ from: o.code, to: c.hub, by: c.short }, { from: c.hub, to: d.code, by: c.short }];
+    legs.forEach(l => l.km = hav(AP[l.from], AP[l.to]));
+    const dep = new Date(q.ready.getTime() + (4 + r() * 26) * 3600e3); dep.setMinutes(Math.round(dep.getMinutes() / 5) * 5, 0, 0);
+    let tcur = dep.getTime(); legs.forEach((l, li) => { if (li) tcur += (2.5 + r() * 10) * 3600e3; l.dep = new Date(tcur); tcur += (l.km / 830 + .55) * 3600e3; l.arr = new Date(tcur); });
+    const arr = new Date(Math.round(tcur / 3e5) * 3e5); const hours = (arr - dep) / 3600e3;
+    const km = legs.reduce((s, l) => s + l.km, 0);
+    let perKgRate = base * wb * cargoF * c.f * (.9 + r() * .2) * (legs.length > 1 && !c.multi ? .95 : 1);
+    perKgRate = Math.round(perKgRate * 100) / 100;
+    const roq = !!c.roq || (i > 2 && r() < .12);
+    const charges = [['Airfreight', perKgRate * cw], ['Fuel surcharge', .27 * cw], ['Security surcharge', .085 * cw], ['Handling', 27.4 + .045 * cw], ['AWB / FWB fee', 17.85]];
+    if (q.cargo === 'Dangerous Goods') charges.push(['DG acceptance check', 95]);
+    if (q.cargo === 'Pharma') charges.push(['Temp-control (CRT)', .35 * cw]);
+    if (q.product === 'D2D' || q.product === 'D2A') charges.push(['Collection', 55 + .11 * cw]);
+    if (q.product === 'D2D' || q.product === 'A2D') charges.push(['Delivery', 65 + .13 * cw]);
+    const total = charges.reduce((s, x) => s + x[1], 0);
+    res.opts.push({ id: c.id, c, legs, dep, arr, hours, km, co2: Math.round(km * cw / 1000 * .52 * (c.express ? 1.25 : 1)), perKgRate, charges, total, perKg: total / cw, cw, roq, minW: 45, aircraft: pick2(r, ['B777F', 'B747-8F', 'A350F', 'B767F', 'A330-200F', 'B787-9 (belly)', 'B777-300ER (belly)']) });
+  });
+  const priced = res.opts.filter(x => !x.roq);
+  if (priced.length) {
+    const minP = Math.min(...priced.map(x => x.total)), maxP = Math.max(...priced.map(x => x.total)), minH = Math.min(...priced.map(x => x.hours)), maxH = Math.max(...priced.map(x => x.hours));
+    priced.forEach(x => { x.score = .62 * ((x.total - minP) / ((maxP - minP) || 1)) + .38 * ((x.hours - minH) / ((maxH - minH) || 1)) + (x.legs.length - 1) * .02; });
+    const tag = (arr, t) => { if (arr[0]) arr[0].tags = (arr[0].tags || []).concat(t); };
+    tag([...priced].sort((a, b) => a.score - b.score), 'best');
+    tag([...priced].sort((a, b) => a.total - b.total), 'cheap');
+    tag([...priced].sort((a, b) => a.hours - b.hours), 'fast');
+    tag([...priced].sort((a, b) => a.co2 - b.co2), 'eco');
+  }
+  res.opts.forEach(x => { x.tags = x.tags || []; if (x.c.multi) x.tags.push('multi'); });
+  return res;
+}
+function pick2(r, a) { return a[Math.floor(r() * a.length)]; }
+function sorted(by = S.sort) {
+  const p = S.opts.filter(x => !x.roq), rq = S.opts.filter(x => x.roq);
+  const f = { value: (a, b) => a.score - b.score, cheap: (a, b) => a.total - b.total, fast: (a, b) => a.hours - b.hours, eco: (a, b) => a.co2 - b.co2 }[by];
+  return [...p].sort(f).concat(rq);
+}
+const best = () => sorted('value')[0];
+const cheapest = () => sorted('cheap')[0];
+const fastest = () => sorted('fast')[0];
+const greenest = () => sorted('eco')[0];
+function applyRate(o, newPerKg) { const delta = (o.perKg - newPerKg) * o.cw; o.was = o.was || o.total; o.charges[0][1] -= delta; o.total -= delta; o.perKg = newPerKg; o.spot = true; if (!o.tags.includes('spot')) o.tags.push('spot'); }
+
+/* ---------------- Orb: six floating honeycomb cells ---------------- */
+let micLevel = 0, pulse = 0, energy = .15;
+function hexPath(ctx, x, y, r, rot, cr) {
+  const p = []; for (let i = 0; i < 6; i++) { const a = rot + i * Math.PI / 3; p.push([x + Math.cos(a) * r, y + Math.sin(a) * r]); }
+  const mid = (i, j) => [(p[i][0] + p[j][0]) / 2, (p[i][1] + p[j][1]) / 2];
+  ctx.beginPath(); const m0 = mid(0, 1); ctx.moveTo(m0[0], m0[1]);
+  for (let i = 1; i <= 6; i++) { const v = p[i % 6], m = mid(i % 6, (i + 1) % 6); ctx.arcTo(v[0], v[1], m[0], m[1], cr); }
+  ctx.closePath();
+}
+class Orb {
+  constructor(canvas) { this.c = canvas; this.ctx = canvas.getContext('2d'); this.t = Math.random() * 50; this.orbit = 0; this.spin = 0; this.size = 0; this.wave = 0; }
+  fit() { const w = Math.round(this.c.getBoundingClientRect().width); if (!w) return false; if (w !== this.size) { this.size = w; const dpr = Math.min(2, window.devicePixelRatio || 1); this.c.width = w * dpr; this.c.height = w * dpr; this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); } return true; }
+  draw(dt, e, mode) {
+    if (!this.c.offsetParent || !this.fit()) return;
+    const s = this.size, c = s / 2, ctx = this.ctx, R = s * .36, TAU = Math.PI * 2;
+    this.t += dt * (.8 + e * 1.6);
+    const target = mode === 'think' ? 3.4 : mode === 'listen' ? 2.1 + micLevel * 3 : mode === 'speak' ? .7 : .28;
+    this.vel = (this.vel || .28) + (target - (this.vel || .28)) * Math.min(1, dt * 3);
+    this.orbit += dt * this.vel;
+    ctx.clearRect(0, 0, s, s);
+    // soft light bloom
+    const g = ctx.createRadialGradient(c, c, 0, c, c, R * 1.4);
+    g.addColorStop(0, `rgba(215,236,255,${.14 + e * .3})`); g.addColorStop(.55, `rgba(130,180,255,${.07 + e * .12})`); g.addColorStop(1, 'rgba(130,180,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
+    // tight honeycomb ring geometry
+    const hr = R * .205, ring = hr * 2.12;
+    // wavy, wobbly outer lines
+    ctx.globalCompositeOperation = 'lighter';
+    const cols = ['170,228,255', '255,255,255', '186,170,255', '130,180,255'];
+    for (let k = 0; k < 4; k++) {
+      const base = R * (.9 + k * .055), amp = R * (.045 + .17 * e) * (1 + k * .16), sp = [1, -1.35, 1.75, -.8][k], n = [3, 4, 5, 6][k];
+      ctx.beginPath();
+      for (let i = 0; i <= 150; i++) { const th = i / 150 * TAU; const r = base + amp * Math.sin(n * th + this.t * sp + k * 1.7) + amp * .45 * Math.sin((n + 2) * th - this.t * sp * 1.4); const x = c + Math.cos(th) * r, y = c + Math.sin(th) * r; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.closePath(); ctx.strokeStyle = `rgba(${cols[k]},${.34 + e * .45})`; ctx.lineWidth = 1 + e * 1.6 - k * .1; ctx.shadowColor = `rgba(${cols[k]},.9)`; ctx.shadowBlur = 6 + e * 12; ctx.stroke();
+    }
+    ctx.shadowBlur = 0; ctx.globalCompositeOperation = 'source-over';
+    // the six cells, packed edge to edge, spinning as one
+    const cells = [];
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + i * Math.PI / 3 + this.orbit;
+      const float = Math.sin(this.t * 1.3 + i * 1.9) * R * .012 * (1 + e * 2);
+      const talk = mode === 'speak' ? Math.max(0, Math.sin(this.t * 7 - i * 1.05)) * (.35 + pulse * .65) : 0;
+      const hear = mode === 'listen' ? micLevel * (.5 + .5 * Math.sin(this.t * 6 + i * 2.1)) : 0;
+      const r = ring + float + talk * R * .05 + hear * R * .08;
+      cells.push({ x: c + Math.cos(a) * r, y: c + Math.sin(a) * r, a, sc: 1 + talk * .08 + hear * .08, depth: Math.sin(a) });
+    }
+    cells.sort((p, q) => p.depth - q.depth);
+    cells.forEach(cl => {
+      const r = hr * cl.sc, rot = cl.a + Math.PI / 6;
+      const fg = ctx.createLinearGradient(cl.x - r, cl.y - r, cl.x + r, cl.y + r); fg.addColorStop(0, '#FFFFFF'); fg.addColorStop(1, '#CFE1FF');
+      ctx.save(); ctx.shadowColor = `rgba(175,215,255,${.6 + e * .3})`; ctx.shadowBlur = 6 + e * 16;
+      hexPath(ctx, cl.x, cl.y, r, rot, r * .2); ctx.fillStyle = fg; ctx.fill(); ctx.restore();
+    });
+    // voice light in the centre
+    const cr = R * (.08 + e * .14 + pulse * .04);
+    const cg = ctx.createRadialGradient(c, c, 0, c, c, cr * 2); cg.addColorStop(0, `rgba(255,255,255,${.5 + e * .45})`); cg.addColorStop(.4, `rgba(190,225,255,${.22 + e * .25})`); cg.addColorStop(1, 'rgba(190,225,255,0)');
+    ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(c, c, cr * 2, 0, TAU); ctx.fill();
+  }
+}
+const orbs = [];
+let lastT = performance.now();
+function loop(ts) {
+  const dt = Math.min(.05, (ts - lastT) / 1000); lastT = ts;
+  let target = .14 + .05 * Math.sin(ts / 900), mode = 'idle';
+  if (S.listening) { target = .3 + Math.min(.7, micLevel * 2.2 + (meterOK ? 0 : .2 + .2 * Math.abs(Math.sin(ts / 160) * Math.sin(ts / 370)))); mode = 'listen'; }
+  else if (S.thinking) { target = .4; mode = 'think'; }
+  else if (S.speaking) { target = .32 + pulse * .55 + .08 * Math.sin(ts / 120); mode = 'speak'; }
+  pulse *= .9; energy += (target - energy) * .16;
+  orbs.forEach(o => o.draw(dt, energy, mode));
+  if (S.listening && meter) { meter.getByteTimeDomainData(meterBuf); let sum = 0; for (let i = 0; i < meterBuf.length; i++) { const v = (meterBuf[i] - 128) / 128; sum += v * v; } micLevel += (Math.sqrt(sum / meterBuf.length) - micLevel) * .3; }
+  requestAnimationFrame(loop);
+}
+let meter = null, meterBuf = null, meterOK = false, meterTried = false, meterPending = false;
+async function startMeter() {
+  if (meterTried) return; meterTried = true; meterPending = true;
+  try { const st = await navigator.mediaDevices.getUserMedia({ audio: true }); meterPending = false; const ac = new (window.AudioContext || window.webkitAudioContext)(); const src = ac.createMediaStreamSource(st); meter = ac.createAnalyser(); meter.fftSize = 512; meterBuf = new Uint8Array(meter.fftSize); src.connect(meter); meterOK = true; } catch (e) { meterOK = false; meterPending = false; }
+}
+
+/* ---------------- Voice out ---------------- */
+let voice = null;
+const synth = window.speechSynthesis;
+const PREF = [/Google UK English Male/i, /Ryan.*Natural/i, /Thomas.*Natural/i, /Guy.*Natural/i, /Daniel/i, /Arthur/i, /Oliver/i, /George/i, /Google UK English/i, /Microsoft.*(United Kingdom|en-GB)/i, /Aaron/i, /Alex/i, /Google US English/i];
+function loadVoices() {
+  if (!synth) return; const vs = synth.getVoices().filter(v => /^en/i.test(v.lang)); if (!vs.length) return;
+  if (!voice) { for (const p of PREF) { const v = vs.find(v => p.test(v.name)); if (v) { voice = v; break; } } voice = voice || vs[0]; }
+  const sel = $('#voiceSel'); sel.innerHTML = vs.map(v => `<option value="${esc(v.name)}" ${voice && v.name === voice.name ? 'selected' : ''}>${esc(v.name)} · ${v.lang}</option>`).join('');
+}
+if (synth) { loadVoices(); synth.onvoiceschanged = loadVoices; }
+let speakToken = 0;
+function speak(text) {
+  text = text.replace(/\/kg/g, ' a kilo').replace(/\bkg\b/g, 'kilos').replace(/\b([A-Z]{3})\b/g, m => AP[m] ? AP[m].city : m).replace(/(?<![$\d.,])\b0*(\d{4,9})\b(?![.,]\d)/g, (m, d) => d.split('').join(' ')).replace(/→/g, ' to ').replace(/\bCSN\b/g, 'C S N').replace(/\bAWB\b/g, 'air waybill').replace(/\bDG\b/g, 'D G').replace(/\bETA\b/g, 'E T A').replace(/(\d)h\b/g, '$1 hours').replace(/\bQ-(\d+)/g, 'Q $1').replace(/CO₂/g, 'C O 2');
+  const my = ++speakToken;
+  return new Promise(res => {
+    const est = Math.min(14000, 700 + text.length * 62);
+    const done = () => { if (my === speakToken) { S.speaking = false; setStatus(); } res(); };
+    if (S.muted || !synth) { S.speaking = true; setStatus(); const iv = setInterval(() => { pulse = Math.max(pulse, .5 + Math.random() * .5); }, 180); setTimeout(() => { clearInterval(iv); done(); }, Math.min(est, S.muted ? est * .55 : est)); return; }
+    try { synth.cancel(); } catch (e) { }
+    const u = new SpeechSynthesisUtterance(text); if (voice) u.voice = voice; u.rate = S.rate; u.pitch = 1; u.lang = voice ? voice.lang : 'en-GB';
+    let finished = false; const fin = () => { if (finished) return; finished = true; clearInterval(iv); clearTimeout(to); done(); };
+    u.onstart = () => { S.speaking = true; setStatus(); };
+    u.onboundary = () => { pulse = 1; };
+    u.onend = fin; u.onerror = fin;
+    const iv = setInterval(() => { if (S.speaking) pulse = Math.max(pulse, .3 + Math.random() * .5); }, 230);
+    const to = setTimeout(fin, est * 1.6 + 2500);
+    S.speaking = true; setStatus(); synth.speak(u);
+  });
+}
+function stopSpeaking() { speakToken++; try { synth && synth.cancel(); } catch (e) { } S.speaking = false; setStatus(); }
+
+/* ---------------- Voice in ---------------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, micBlocked = false, micWarned = false, autoTimer = null;
+const inFrame = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+function micWarn() { if (micWarned) return; micWarned = true; toast(SR ? "Mic isn't available here — type to Freddy, or open the standalone file in Chrome for voice." : "Voice needs Chrome, Edge or Safari. Typing works everywhere.", 'w'); }
+function startListening(opts = {}) {
+  touch(); if (S.demo) return;
+  if (!SR) { if (!opts.auto) { micWarn(); $('#askInput').focus(); } return; }
+  if (micBlocked && opts.auto) return;
+  stopSpeaking(); clearTimeout(autoTimer);
+  try { rec && rec.abort(); } catch (e) { }
+  const r = rec = new SR(); r.lang = 'en-GB'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+  let fin = '', heard = false;
+  const fw = $('#fw');
+  r.onstart = () => {
+    if (rec !== r) return; S.listening = true; setStatus(); showLive('', true);
+    if (opts.auto) { fw.classList.remove('window'); void fw.offsetWidth; fw.classList.add('window'); autoTimer = setTimeout(() => { if (!heard && rec === r) { try { r.abort(); } catch (e) { } } }, 5000); }
+  };
+  r.onresult = e => { if (!heard) { heard = true; clearTimeout(autoTimer); fw.classList.remove('window'); } let interim = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) fin += x[0].transcript; else interim += x[0].transcript; } showLive(fin + interim, true); };
+  r.onaudiostart = () => { micBlocked = false; };
+  r.onerror = e => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { if (!opts.auto) { micBlocked = true; toast(inFrame ? "Mic is blocked inside this preview — open the shared link or the file in Chrome to talk." : "Mic permission is off — click the mic icon in the address bar, allow it, then tap the orb again.", 'w'); } else micBlocked = true; }
+    else if (e.error === 'audio-capture' && !opts.auto) toast("No microphone found — check your input device.", 'w');
+    else if (e.error === 'network' && !opts.auto) toast("Couldn't reach the speech service — check the internet connection.", 'w');
+  };
+  r.onend = () => { clearTimeout(autoTimer); fw.classList.remove('window'); if (rec === r) { S.listening = false; setStatus(); showLive(''); } const t = fin.trim(); if (t) submit(t, 'voice'); };
+  try { r.start(); startMeter(); } catch (e) { S.listening = false; setStatus(); }
+}
+function stopListening() { try { rec && rec.stop(); } catch (e) { } }
+function cancelListening() { clearTimeout(autoTimer); $('#fw').classList.remove('window'); try { rec && rec.abort(); } catch (e) { } S.listening = false; setStatus(); showLive(''); }
+function autoListen() { if (meterPending) { setTimeout(autoListen, 500); return; } if (!S.autoListen || S.demo || !S.started || S.listening || S.speaking || S.thinking || document.hidden || $('#app').classList.contains('collapsed')) return; if (document.activeElement && document.activeElement.id === 'askInput' && $('#askInput').value) return; startListening({ auto: true }); }
+
+/* ---------------- UI: Freddy panel ---------------- */
+const feed = () => $('#feed');
+function setStatus() {
+  const fw = $('#fw'); fw.classList.toggle('live', S.listening); fw.classList.toggle('talk', S.speaking && !S.listening); fw.classList.toggle('think', S.thinking);
+  const st = $('#fStatus'); st.textContent = S.listening ? 'Listening…' : S.thinking ? 'Thinking…' : S.speaking ? 'Speaking' : S.demo ? 'Tour mode' : 'CSN quoting co-pilot'; st.classList.toggle('on', S.listening || S.thinking || S.speaking);
+}
+function showLive(text, listening) { const el = $('#live'); if (!text && !listening) { el.innerHTML = ''; return; } el.innerHTML = `${esc(text) || '<span class="muted">Listening…</span>'}<span class="caret"></span>`; }
+function wordWrap(html) { let n = 0; return html.split(/(<[^>]+>)/).map(part => part.startsWith('<') ? part : part.replace(/(\S+)/g, w => `<span class="w" style="animation-delay:${(n++) * 38}ms">${w}</span>`)).join(''); }
+function addMsg(who, html, card, src) {
+  const el = document.createElement('div'); el.className = 'msg ' + who;
+  if (who === 'fr') el.innerHTML = wordWrap(html) + (card ? `<div class="fcard">${card}</div>` : '');
+  else if (who === 'me') el.innerHTML = (src === 'voice' ? '<span class="src"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg> You said</span>' : src === 'tap' ? '<span class="src">Tapped</span>' : '') + html;
+  else el.innerHTML = html;
+  feed().appendChild(el); requestAnimationFrame(() => feed().scrollTop = feed().scrollHeight); setTimeout(() => feed().scrollTop = feed().scrollHeight, 400);
+  return el;
+}
+function setChips(list) {
+  const el = $('#chips'); el.innerHTML = '';
+  (list || []).forEach((c, i) => { const [label, cmd, hot] = Array.isArray(c) ? c : [c, c]; const b = document.createElement('button'); b.className = 'chip' + (hot || i === 0 ? ' hot' : ''); b.textContent = label; b.dataset.cmd = cmd; b.style.animationDelay = (i * 50) + 'ms'; el.appendChild(b); });
+}
+async function reply(html, o = {}) {
+  S.thinking = false; setStatus();
+  addMsg('fr', html, o.card);
+  if (o.chips !== undefined) setChips(o.chips);
+  await speak(o.say || strip(html));
+}
+function defaultChips() {
+  if (S.opts.length) return [['Book ' + (S.sel || best() || {}).c?.short, 'Book it'], 'Add 12% margin and send it', 'Try for a better rate', 'Fastest option', 'Start a new quote'];
+  return ["Quote 300 kg Joburg to Dubai", "What's happening today?", "Track 423344", "What can you do?"];
+}
+
+/* ---------------- routing ---------------- */
+let chain = Promise.resolve(), jobs = 0;
+function enqueue(fn) {
+  jobs++;
+  chain = chain.then(fn).catch(e => { console.error(e); S.thinking = false; setStatus(); }).finally(() => { jobs--; if (!jobs) setTimeout(() => { if (!jobs) autoListen(); }, 250); });
+  return chain;
+}
+function submit(text, src = 'text') {
+  text = (text || '').trim(); if (!text) return chain; touch();
+  if (!S.started) begin(null);
+  if (S.listening && src !== 'voice') cancelListening();
+  return enqueue(() => processMsg(text, src));
+}
+function systemSay(fn) { return enqueue(fn); }
+async function processMsg(text, src) {
+  addMsg('me', esc(text), null, src);
+  setChips([]);
+  S.thinking = true; setStatus();
+  await wait(S.demo ? 450 : 320 + Math.random() * 280);
+  await route(text);
+  S.thinking = false; setStatus();
+}
+
+async function route(raw) {
+  const low = raw.toLowerCase().trim().replace(/[!?.,]+$/, '');
+  const P = parse(raw);
+  const slots = hasQuoteSlots(P);
+  const idm = raw.match(/\b0*(\d{4,9})\b/);
+
+  if (RX.reset.test(low) && !slots) return resetQuote(true);
+  if (RX.reset.test(low) && slots) { S.q = null; S.opts = []; S.sel = null; S.pending = null; }
+
+  // pending confirmation
+  if (S.pending && S.pending.type === 'confirm') {
+    if (RX.yes.test(low) || (/\b(yes|yeah|go ahead|do it|book it|lock it|please)\b/.test(low) && !slots && !RX.no.test(low))) { const p = S.pending; S.pending = null; return p.yes(); }
+    if (RX.no.test(low) && (slots || RX.track.test(low) || RX.brief.test(low))) S.pending = null;
+    else if (RX.no.test(low)) { const p = S.pending; S.pending = null; return p.no ? p.no() : reply(pick(["No problem — parked.", "Sure, holding off.", "All good, nothing booked."]) + ' What next?', { chips: defaultChips() }); }
+  }
+  // pending choice (country → airport)
+  if (S.pending && S.pending.type === 'choice') {
+    const code = P.airports.find(a => S.pending.options.includes(a.code))?.code || S.pending.options.find(c => low.includes(AP[c].city.toLowerCase()));
+    if (code) { const role = S.pending.role; S.pending = null; S.q[role] = code; S.q.changed = [role]; return advance(`${AP[code].city}, got it.`); }
+  }
+  // small ops intents
+  if (/\b(send|share)\b.*\btracking\b/.test(low)) { toast('Live tracking link shared'); return reply(`Shared — ${S.customer ? '<b>' + esc(S.customer) + '</b>' : 'your customer'} gets a live tracking link with milestone alerts. Anything else?`, { chips: defaultChips() }); }
+  if (/\bremind me\b/.test(low)) { toast('Reminder set · 3h before cut-off'); return reply(`Will do — I'll nudge you three hours before cut-off if the shipper and consignee details are still missing.`, { chips: defaultChips() }); }
+  if (/\bspot rate (request|review)s?\b/.test(low) && !S.opts.length) return reply(`Nothing open right now — zero spot rate requests and zero reviews. Want me to raise one? Give me a lane and weight.`, { chips: defaultChips() });
+  // tracking / ops
+  if ((RX.track.test(low) && (idm || /\b(shipment|it|that|booking|my cargo)\b/.test(low)) && P.airports.length < 2) || (idm && findShip(idm[1]) && P.slots.weight == null)) return track(idm ? idm[1] : null);
+  if (RX.chase.test(low)) return chase(idm ? idm[1] : null);
+  if (RX.brief.test(low) && !slots) return brief();
+  if (RX.ships.test(low) && !slots && !(S.opts.length && RX.book.test(low))) return shipList(low);
+
+  // actions on results
+  if (S.opts.length && P.airports.length < 2) { const done = await resultActions(raw, low, P); if (done) return; }
+  if (!S.opts.length && (RX.book.test(low) || RX.margin.test(low)) && !slots) return reply("Nothing on the table yet — give me a lane and a weight and I'll find you something to book. Like <b>“400 kilos Cape Town to Frankfurt”</b>.", { chips: defaultChips() });
+
+  // pending question answers (bare numbers etc.)
+  if (S.pending && S.pending.type === 'ask' && !slots) { const ok = await answerAsk(raw, low, P); if (ok) return; }
+
+  if (slots || (RX.quote.test(low) && !RX.send.test(low) && !RX.thanks.test(low))) return quoteFlow(P, low);
+  if (S.pending && S.pending.type === 'ask') { const ok = await answerAsk(raw, low, P); if (ok) return; }
+
+  if (RX.greet.test(low)) return greet();
+  if (RX.help.test(low)) return help();
+  if (RX.thanks.test(low)) return reply(pick(["Anytime!", "Happy to help.", "Pleasure — that's what I'm here for."]) + ' Anything else on your list?', { chips: defaultChips() });
+  if (RX.yes.test(low)) return reply("Sure thing — what should I do? You can ask for a quote, a booking or a shipment update.", { chips: defaultChips() });
+  if (/\b(who are you|your name|are you (a )?(bot|ai|human))\b/.test(low)) return reply("I'm <b>Freddy</b> — CSN's quoting co-pilot. I check live tariffs across the network, read you the best options, and handle the booking, rate requests and tracking. Basically your ops desk, minus the hold music.", { chips: defaultChips() });
+  return fallback(raw);
+}
+
+/* ---------------- quote flow ---------------- */
+function resolveRoles(P) {
+  const q = S.q || {}; const r = { origin: null, destination: null, loose: [] };
+  P.airports.forEach(a => { if (a.role && !r[a.role]) r[a.role] = a.code; else r.loose.push(a.code); });
+  for (const code of r.loose) {
+    if (!r.origin && r.destination) r.origin = code;
+    else if (!r.destination && r.origin) r.destination = code;
+    else if (!r.origin && !r.destination) {
+      if (P.airports.length >= 2) r.origin = code;
+      else if (S.pending?.type === 'ask' && (S.pending.slot === 'origin' || S.pending.slot === 'destination')) r[S.pending.slot] = code;
+      else if (q.origin && !q.destination) r.destination = code;
+      else if (!q.origin && q.destination) r.origin = code;
+      else if (q.origin && q.destination) r.destination = code;
+      else r.origin = code;
+    }
+  }
+  return r;
+}
+async function quoteFlow(P, low) {
+  const s = P.slots; const roles = resolveRoles(P);
+  if (!S.q || (roles.origin && roles.destination && (S.opts.length || (S.q.origin && S.q.destination)))) { const keepCust = S.customer; resetQuote(false); S.customer = keepCust; S.q = newQuote(); }
+  const q = S.q; const ch = [];
+  const hadResults = S.opts.length > 0;
+  if (roles.origin && roles.origin !== q.origin) { q.origin = roles.origin; ch.push('origin'); }
+  if (roles.destination && roles.destination !== q.destination) { q.destination = roles.destination; ch.push('destination'); }
+  if (s.pieces != null) { q.pieces = s.pieces; q.unit = s.unit; ch.push('pieces'); }
+  if (s.weight != null) { q.weight = s.perPiece ? s.weight * (q.pieces || 1) : s.weight; ch.push('weight'); }
+  if (s.dims) { q.dims = s.dims; q.dimsAsked = true; if (!q.pieces) q.pieces = 1; ch.push('dims'); }
+  if (s.cargo && s.cargo !== q.cargo) { q.cargo = s.cargo; ch.push('cargo'); }
+  if (s.un) { q.un = s.un; q.unAsked = true; ch.push('cargo'); }
+  if (s.unHint && !q.un) q.unHint = s.unHint;
+  if (s.product) { q.product = s.product; ch.push('product'); }
+  if (s.ready) { q.ready = s.ready; q.readyLabel = s.readyLabel; q.readyAssumed = false; ch.push('ready'); }
+  if (s.screened) { q.screened = true; ch.push('handling'); }
+  if (s.stackable != null) { q.stackable = s.stackable; ch.push('handling'); }
+  if (s.desc) { q.desc = s.desc.slice(0, 15); ch.push('desc'); }
+  if (P.carriers.length && !hadResults) { q.carrier = P.carriers[0]; ch.push('carrier'); }
+  q.changed = ch;
+  // country needs a choice?
+  const country = P.countries[0];
+  if (country) {
+    let role = country.role || (roles.origin ? 'destination' : roles.destination ? 'origin' : (q.origin && !q.destination ? 'destination' : !q.origin ? 'origin' : 'destination'));
+    S.pending = { type: 'choice', role, options: country.codes };
+    showView('quote'); updateQuoteView();
+    const names = country.codes.map(c => AP[c].city);
+    const nice = country.name.length <= 3 ? country.name.toUpperCase() : country.name.replace(/\b\w/g, m => m.toUpperCase());
+    return reply(`${nice}'s a big place — ${names.slice(0, -1).join(', ')} or ${names.slice(-1)}?`, { chips: country.codes.map(c => [AP[c].city + ' (' + c + ')', AP[c].city]) });
+  }
+  if (!ch.length && !q.origin) return advance(pick(["Let's do it.", "Sure, let's get you a quote."]));
+  if (hadResults && ch.length) { S.pending = null; return search(updateAck(ch)); }
+  return advance(ack(ch));
+}
+function ack(ch) {
+  const q = S.q; if (!ch.length) return '';
+  const bits = [];
+  if (ch.includes('origin') && ch.includes('destination')) bits.push(`${AP[q.origin].city} to ${AP[q.destination].city}`);
+  else if (ch.includes('origin')) bits.push(`from ${AP[q.origin].city}`);
+  else if (ch.includes('destination')) bits.push(`to ${AP[q.destination].city}`);
+  if (ch.includes('weight')) bits.push(`${fmtKg(q.weight)}${q.pieces > 1 ? ` over ${q.pieces} ${plural(q.unit || 'piece', q.pieces)}` : ''}`);
+  else if (ch.includes('pieces')) bits.push(`${q.pieces} ${plural(q.unit || 'piece', q.pieces)}`);
+  if (ch.includes('cargo') && q.cargo !== 'General Cargo') bits.push(q.cargo === 'Dangerous Goods' ? `dangerous goods${q.un ? ' ' + q.un : ''}` : q.cargo.toLowerCase());
+  if (ch.includes('product')) bits.push({ D2D: 'door to door', A2A: 'airport to airport', D2A: 'door to airport', A2D: 'airport to door' }[q.product]);
+  const tail = ch.includes('dims') && q.weight ? ' ' + dimsAck() : '';
+  if (!bits.length) return tail ? tail.trim() : pick(['Got it.', 'Noted.', 'Okay.']);
+  return pick(['Got it —', 'Nice —', 'Okay —', 'Sure —']) + ' ' + bits.join(', ') + '.' + tail;
+}
+function updateAck(ch) {
+  const q = S.q; const m = [];
+  if (ch.includes('weight') || ch.includes('dims') || ch.includes('pieces')) m.push(`${fmtKg(chargeable(q))} chargeable`);
+  if (ch.includes('destination')) m.push(`now going to ${AP[q.destination].city}`);
+  if (ch.includes('origin')) m.push(`now from ${AP[q.origin].city}`);
+  if (ch.includes('cargo')) m.push(q.cargo.toLowerCase());
+  if (ch.includes('product')) m.push({ D2D: 'door to door', A2A: 'airport to airport', D2A: 'door to airport', A2D: 'airport to door' }[q.product]);
+  if (ch.includes('ready')) m.push(`ready ${q.readyLabel.toLowerCase()}`);
+  return `Updated — ${m.join(', ') || 'changes in'}.`;
+}
+const fmtKg = n => `${Number(n).toLocaleString('en-US')} kg`;
+const plural = (u, n) => n === 1 ? u : (u === 'box' ? 'boxes' : u + 's');
+function ask(slot, text, chips, extra = {}) { S.pending = { type: 'ask', slot, ...extra }; return reply(text, { chips }); }
+
+async function advance(ackText) {
+  const q = S.q; showView('quote'); updateQuoteView();
+  const pre = ackText ? ackText + ' ' : '';
+  if (!q.origin && !q.destination) return ask('lane', pre + "Where's it flying from, and where to?", [['Joburg → London', 'Johannesburg to London'], ['Cape Town → Dubai', 'Cape Town to Dubai'], ['Durban → Hong Kong', 'Durban to Hong Kong']]);
+  if (!q.origin) return ask('origin', pre + `And where's it flying from?`, [['Johannesburg', 'from Johannesburg'], ['Cape Town', 'from Cape Town'], ['Durban', 'from Durban']]);
+  if (!q.destination) return ask('destination', pre + `Where's it headed?`, [['London', 'to London'], ['Dubai', 'to Dubai'], ['Hong Kong', 'to Hong Kong'], ['Frankfurt', 'to Frankfurt']]);
+  if (!q.weight) return ask('weight', pre + pick(["How heavy is it, roughly?", "What's the gross weight?", "How much does it weigh?"]), ['100 kg', '250 kg', '500 kg', '1 tonne']);
+  if (!q.dims && !q.dimsAsked) {
+    q.dimsAsked = true;
+    if (q.unit === 'pallet') return ask('dims', pre + `Standard Euro pallets — 120 by 80? How tall are they stacked? Bulky freight gets charged on volume, so it matters.`, [['120 × 80 × 100', '120 by 80 by 100'], ['120 × 80 × 150', '120 by 80 by 150'], ['Skip dims', 'skip']]);
+    return ask('dims', pre + `Got dimensions? If it's bulky you'll be charged on volume, so I'd rather not surprise you.`, [['40 × 30 × 30 cm', '40 by 30 by 30'], ['100 × 100 × 100 cm', '100 by 100 by 100'], ['Skip — no dims', 'skip']]);
+  }
+  if (q.cargo === 'Dangerous Goods' && !q.un && !q.unAsked) { q.unAsked = true; return ask('un', pre + `Dangerous goods — what's the UN number? I'll filter out carriers that won't take it.`, q.unHint ? [[q.unHint + (q.unHint === 'UN3480' ? ' · Li-ion batteries' : ' · Dry ice'), q.unHint], 'Skip'] : [['UN3480 · Li-ion batteries', 'UN3480'], ['UN1845 · Dry ice', 'UN1845'], ['UN1263 · Paint', 'UN1263'], 'Skip']); }
+  if (q.product !== 'A2A' && !q.postAsked) { q.postAsked = true; return ask('post', pre + (q.product === 'D2D' ? `Door to door — what are the pickup and delivery postcodes?` : q.product === 'D2A' ? `What's the pickup postcode?` : `What's the delivery postcode?`), [['2196 and TW6 2GA', '2196 and TW6 2GA'], 'Skip for now']); }
+  return search(ackText);
+}
+async function answerAsk(raw, low, P) {
+  const p = S.pending, q = S.q; if (!p || !q && !['customer', 'rrTarget', 'margin'].includes(p.slot)) return false;
+  const num = (low.match(/(\d+(?:\.\d+)?)/) || [])[1];
+  switch (p.slot) {
+    case 'weight': if (num) { q.weight = +num * (/\bton/.test(low) ? 1000 : 1); S.pending = null; q.changed = ['weight']; return advance(`${fmtKg(q.weight)}, noted.`), true; } break;
+    case 'dims':
+      if (RX.yes.test(low) && !num) { await reply(`Go for it — length by width by height, in centimetres.`, { chips: [['Skip', 'skip']] }); return true; }
+      if (RX.skip.test(low) || RX.no.test(low)) { S.pending = null; await advance(pick(["No worries — I'll go on gross weight.", "Fine — gross weight it is."])); return true; }
+      if (num && q.unit === 'pallet') { q.dims = { l: 120, w: 80, h: Math.round(+num * (+num <= 3 ? 100 : 1)) }; S.pending = null; q.changed = ['dims']; await advance(dimsAck()); return true; }
+      break;
+    case 'un': { const m = low.match(/(\d{4})/); if (m) { q.un = 'UN' + m[1]; S.pending = null; q.changed = ['cargo']; await advance(`${q.un}, got it.`); return true; } if (RX.skip.test(low) || RX.no.test(low)) { S.pending = null; await advance("Okay — I'll flag it for DG check later."); return true; } break; }
+    case 'post': { if (RX.skip.test(low) || /later|for now/.test(low)) { S.pending = null; await advance('Sure, we can add them before booking.'); return true; } q.post = raw.replace(/^(it'?s|they'?re)\s+/i, ''); S.pending = null; q.changed = ['product']; await advance('Perfect.'); return true; }
+    case 'customer': { const name = cleanName(raw); if (name) { S.customer = name; S.pending = null; await sendQuote(); return true; } break; }
+    case 'margin': { if (num) { S.margin = +num; S.marginSet = true; S.pending = null; await marginReply(); return true; } break; }
+    case 'rrTarget': { const tgt = parseTarget(low, p.opt); if (tgt) { S.pending = null; await rateRequest(p.opt, tgt); return true; } break; }
+    case 'lane': case 'origin': case 'destination': break;
+  }
+  return false;
+}
+function dimsAck() { const q = S.q; const vw = volW(q); return vw > (q.weight || 0) ? `Heads up — that's bulky. ${fmtKg(Math.ceil(vw))} volumetric beats ${fmtKg(q.weight)} gross, so that's what carriers will charge on.` : `Thanks — volume's fine, ${fmtKg(q.weight)} gross is what counts.`; }
+
+async function search(ackText) {
+  const q = S.q; S.pending = null; S.sent = false; S.marginSet = false;
+  showView('quote'); updateQuoteView(); renderSearching();
+  let lead = ackText || '';
+  lead = (lead ? lead + ' ' : '') + pick(["Checking live tariffs now…", "Give me a sec — pulling rates from across the network…", "On it — scanning carriers on this lane…"]);
+  await Promise.all([reply(lead, { chips: [] }), wait(2100)]);
+  const res = generate(q); S.opts = res.opts; S.excludedDG = res.excluded; S.dist = res.dist; S.sort = 'value'; S.expanded = null;
+  S.sel = best() || S.opts[0] || null;
+  updateQuoteView(); renderResults();
+  if (!S.opts.length) {
+    S.pending = { type: 'confirm', yes: async () => { toast('Tailored quote requested · CSN desk notified'); await reply(`Done — the CSN desk has it. Typical turnaround on lanes like this is under an hour; I'll ping you the moment it lands.`, { chips: ['Start a new quote', "What's happening today?"] }); } };
+    return reply(`No tariffs on file for <b>${AP[q.origin].city} → ${AP[q.destination].city}</b> right now — but we can still help. Want me to ask the CSN desk to build you a tailored offer?`, { chips: [['Yes, request a quote', 'yes'], ['Try another lane', 'start over']] });
+  }
+  const b = best(), c = cheapest(), f = fastest(); const n = S.opts.length; const cw = chargeable(q);
+  let html = `Found <b>${n} options</b>. My pick is <b>${b.c.short}</b> — <b>${money(b.total)}</b> all-in (${money(b.perKg)}/kg), landing ${spokenWhen(b.arr)}${b.legs.length > 1 ? ' via ' + AP[b.legs[0].to].city : ', direct'}.`;
+  let say = `Found ${n} options. My pick is ${b.c.short}: ${sayMoney(b.total)} all in, landing ${spokenWhen(b.arr)}${b.legs.length > 1 ? ' via ' + AP[b.legs[0].to].city : ', direct'}.`;
+  if (c && c !== b) { const slower = c.hours - b.hours; html += ` Cheapest is <b>${c.c.short}</b> at ${money(c.total)}${slower > 6 ? `, but it's ${spokenDur(slower)} slower` : ''}.`; say += ` Cheapest is ${c.c.short} at ${sayMoney(c.total)}${slower > 6 ? `, but it's ${spokenDur(slower)} slower` : ''}.`; }
+  if (f && f !== b && f !== c) { html += ` In a rush? <b>${f.c.short}</b> lands ${spokenWhen(f.arr)} for ${money(f.total)}.`; say += ` In a rush? ${f.c.short} lands ${spokenWhen(f.arr)} for ${sayMoney(f.total)}.`; }
+  if (S.excludedDG) { html += ` ${S.excludedDG} carrier${S.excludedDG > 1 ? 's' : ''} dropped out — no DG acceptance.`; }
+  const qn = pick([`Want me to add your margin and send it to the customer, or lock ${b.c.short} now?`, `Shall I book ${b.c.short}, or try and squeeze a better rate first?`, `Is this for a customer? I can add your margin and send the quote in one go.`]);
+  html += ' ' + qn; say += ' ' + qn;
+  await reply(html, { say, card: miniCard(sorted('value').slice(0, 3)), chips: [['Book ' + b.c.short, 'Book ' + b.c.short], ['Add 12% margin & send', 'Add 12% margin and send it to the customer'], ['Ask ' + (c || b).c.short + ' for 8% off', `Ask ${(c || b).c.short} for 8% off`], ['Fastest option', 'Show me the fastest'], ['Change weight', 'Change the weight to ']] });
+}
+function miniCard(list) {
+  return list.map(o => `<div class="row" data-act="sel:${o.id}"><div class="mono" style="background:${o.c.color}">${o.id}</div><div class="nm">${o.tags.includes('best') ? '<span class="tagline">Freddy\'s pick</span>' : o.tags.includes('cheap') ? '<span class="tagline">Cheapest</span>' : o.tags.includes('fast') ? '<span class="tagline">Fastest</span>' : ''}<b>${o.c.short}</b><small>${dur(o.hours)} · ${o.legs.length > 1 ? 'via ' + o.legs.slice(0, -1).map(l => l.to).join(', ') : 'direct'}</small></div><div class="pr">${o.roq ? '<b style="font-size:.8rem">On request</b>' : `<b class="num">${money0(o.total)}</b><small>${money(o.perKg)}/kg</small>`}</div><button class="fbtn ${o.tags.includes('best') ? 'blue' : ''}" data-cmd="Book ${o.c.short}">Book</button></div>`).join('');
+}
+
+/* ---------------- result actions ---------------- */
+function findRef(low, P) {
+  if (P.carriers.length) { const o = S.opts.find(o => o.id === P.carriers[0]); if (o) return o; return { missing: P.carriers[0] }; }
+  if (RX.cheap.test(low) && !/cheaper rate/.test(low)) return cheapest();
+  if (RX.fast.test(low)) return fastest();
+  if (RX.green.test(low)) return greenest();
+  if (/\b(best|recommended|your pick|freddy'?s pick|top one)\b/.test(low)) return best();
+  const ord = low.match(/\b(first|1st|second|2nd|third|3rd|fourth|4th|fifth|5th|last)\b|\b(?:option|number|no\.?|#)\s*(\d)\b/);
+  if (ord) { const L = sorted(); const map = { first: 0, '1st': 0, second: 1, '2nd': 1, third: 2, '3rd': 2, fourth: 3, '4th': 3, fifth: 4, '5th': 4 }; const i = ord[1] ? (ord[1] === 'last' ? L.length - 1 : map[ord[1]]) : +ord[2] - 1; return L[i] || null; }
+  if (/\bdirect\b/.test(low)) return sorted().find(o => o.legs.length === 1 && !o.roq) || null;
+  return null;
+}
+async function resultActions(raw, low, P) {
+  let ref = findRef(low, P);
+  if (ref && ref.missing) { const c = CR[ref.missing]; await reply(`${c.short} isn't quoting this lane right now. Closest alternative is <b>${best().c.short}</b> at ${money(best().total)} — want that instead?`, { chips: [['Book ' + best().c.short, 'Book ' + best().c.short], 'Read me the options'] }); return true; }
+  const o = ref || S.sel;
+  const wantsMargin = RX.margin.test(low) || /\badd \d+(\.\d+)? ?(%|percent)/.test(low);
+  const wantsSend = RX.send.test(low) && !/\b(send me|show me)\b/.test(low);
+  if (wantsMargin || wantsSend) { if (ref) select(ref); return marginSend(raw, low), true; }
+  if (RX.rate.test(low) && !RX.book.test(low)) { const tgt = parseTarget(low, o); if (ref) select(ref); await rateRequest(o, tgt); return true; }
+  if (RX.book.test(low)) { if (ref) select(ref); await book(o); return true; }
+  if (RX.hold.test(low)) { if (ref) select(ref); await hold(o); return true; }
+  if (RX.compare.test(low)) { const refs = P.carriers.map(id => S.opts.find(x => x.id === id)).filter(Boolean); const a = refs[0] || S.sel || best(); const b = refs[1] || (a !== best() ? best() : (cheapest() !== a ? cheapest() : sorted('value')[1])); await compare(a, b); return true; }
+  if (RX.readout.test(low)) { await readout(); return true; }
+  if (/\b(chargeable|volumetric|vol weight|why so (heavy|much))\b/.test(low)) { const q = S.q; await reply(`Chargeable weight is <b>${fmtKg(chargeable(q))}</b> — ${volW(q) > q.weight ? `volume beats gross (${fmtKg(Math.ceil(volW(q)))} vs ${fmtKg(q.weight)}). Tighter packing would bring it down.` : `that's your gross weight; volume's only ${fmtKg(Math.ceil(volW(q)))}.`}`, { chips: defaultChips() }); return true; }
+  if (/\bwhy\b/.test(low)) { const b = best(); await reply(`I weigh price and transit time together. <b>${b.c.short}</b> isn't always the very cheapest, but it's the best balance — ${money(b.total)} and ${dur(b.hours)} door-to-door on the air leg.`, { chips: defaultChips() }); return true; }
+  if (ref) {
+    select(ref);
+    const sortKey = RX.fast.test(low) ? 'fast' : RX.cheap.test(low) ? 'cheap' : RX.green.test(low) ? 'eco' : null; if (sortKey) { S.sort = sortKey; renderResults(); }
+    if (ref.roq) { S.pending = { type: 'confirm', yes: () => rateRequest(ref, null, true) }; await reply(`<b>${ref.c.short}</b> is rate-on-request on this lane. Want me to send them a rate request?`, { chips: [['Yes, request a rate', 'yes'], 'No thanks'] }); return true; }
+    const lead = sortKey === 'fast' ? 'Fastest is' : sortKey === 'cheap' ? 'Cheapest is' : sortKey === 'eco' ? 'Lowest-carbon is' : 'Here\'s';
+    await reply(`${lead} <b>${ref.c.short}</b> — <b>${money(ref.total)}</b> (${money(ref.perKg)}/kg). Departs ${fmtDate(ref.dep)} ${fmtTime(ref.dep)}, lands ${spokenWhen(ref.arr)}${ref.legs.length > 1 ? ' via ' + ref.legs.slice(0, -1).map(l => AP[l.to].city).join(' and ') : ', direct'}. About ${ref.co2.toLocaleString()} kg CO₂. Want it?`, { chips: [['Book ' + ref.c.short, 'Book it'], ['Ask for a better rate', 'Try for a better rate'], ['Add margin & send', 'Add 12% margin and send it to the customer'], 'Compare with your pick'] });
+    return true;
+  }
+  if (RX.fast.test(low) || RX.cheap.test(low) || RX.green.test(low) || RX.value.test(low)) return false;
+  return false;
+}
+function select(o) { if (!o) return; S.sel = o; renderResults(); const el = $(`.opt[data-id="${o.id}"]`); if (el) { const st = $('#stage'); const y = el.getBoundingClientRect().top - st.getBoundingClientRect().top + st.scrollTop - 120; st.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } }
+function parseTarget(low, o) {
+  if (!o) return null;
+  const pc = low.match(/(\d+(?:\.\d+)?)\s*(?:%|percent)/); if (pc) return Math.round(o.perKg * (1 - +pc[1] / 100) * 100) / 100;
+  const dl = low.match(/\$?\s*(\d+(?:\.\d+)?)\s*(?:dollars?\s*)?(?:a|per|\/)\s*(?:kg|kilo)/) || low.match(/\$\s*(\d+(?:\.\d+)?)/) || low.match(/\b(\d+\.\d+)\b/);
+  if (dl) { const v = +dl[1]; if (v < o.perKg * 1.2 && v > o.perKg * .3) return v; if (v > 50 && v < o.total) return Math.round(v / o.cw * 100) / 100; }
+  const words = low.match(/\b(a|one|two|1|2) dollars?( and )?(\d+)?/); if (words) { return null; }
+  return null;
+}
+async function rateRequest(o, target, roqOk) {
+  if (!o) return reply("Which option should I negotiate on?", { chips: sorted().slice(0, 3).map(x => ['Ask ' + x.c.short, `Ask ${x.c.short} for a better rate`]) });
+  select(o);
+  if (o.roq) {
+    o.requested = true; renderResults(); toast(`Rate request sent to ${o.c.short}`);
+    setTimeout(() => counterOffer(o, null), S.demo ? 4000 : 6500);
+    return reply(`Sent — I've asked <b>${o.c.short}</b> for a rate on ${fmtKg(o.cw)}. They usually answer within the hour; I'll shout as soon as they do.`, { chips: defaultChips() });
+  }
+  if (!target) return ask('rrTarget', `${o.c.short} is at <b>${money(o.perKg)}/kg</b> all-in right now. What are you aiming for?`, [['5% off', '5% off'], ['8% off', '8% off'], ['10% off', '10% off'], [money(Math.round(o.perKg * .9 * 100) / 100) + '/kg', money(Math.round(o.perKg * .9 * 100) / 100) + ' a kilo']], { opt: o });
+  o.requested = true; o.target = target; renderResults(); toast(`Rate request sent to ${o.c.short} · target ${money(target)}/kg`);
+  const pct = Math.round((1 - target / o.perKg) * 100);
+  setTimeout(() => counterOffer(o, target), S.demo ? 4200 : 7000);
+  return reply(`Done — rate request's with <b>${o.c.short}</b> at <b>${money(target)}/kg</b>, about ${pct}% under. Carriers on this lane usually come back fast; I'll tell you the second they do.`, { chips: ['Meanwhile, show me the fastest', 'Hold the space', "What's happening today?"] });
+}
+function counterOffer(o, target) {
+  systemSay(async () => {
+    if (!S.opts.includes(o)) return;
+    let newRate;
+    if (o.roq) { const ref = best(); newRate = Math.round(ref.perKg * (.96 + Math.random() * .06) * 100) / 100; o.roq = false; o.total = newRate * o.cw; o.perKg = newRate; o.charges = [['All-in spot rate', o.total]]; o.score = (ref.score || 0) + .05; o.spot = true; o.tags.push('spot'); }
+    else { newRate = Math.round((target + (o.perKg - target) * (.25 + Math.random() * .2)) * 100) / 100; var saved = (o.perKg - newRate) * o.cw; applyRate(o, newRate); }
+    o.requested = false; select(o); renderResults();
+    addMsg('sys', 'Rate request · reply received');
+    S.pending = { type: 'confirm', yes: () => executeBooking(o), no: () => reply(`Okay — the spot rate's held for 24 hours if you change your mind.`, { chips: defaultChips() }) };
+    await reply(o.was ? `Good news — <b>${o.c.short}</b> came back at <b>${money(newRate)}/kg</b>. That's <b>${money(o.total)}</b> all-in, saving you <b>${money0(saved)}</b>. Want me to lock it in?` : `<b>${o.c.short}</b> replied — <b>${money(newRate)}/kg</b>, so <b>${money(o.total)}</b> all-in. Want me to book it?`, { chips: [['Yes, book it', 'yes'], ['Not yet', 'not yet'], ['Add margin & send', 'Add 12% margin and send it to the customer']] });
+  });
+}
+async function book(o) {
+  if (!o) return reply('Which one shall I book?', { chips: sorted().slice(0, 3).map(x => ['Book ' + x.c.short, 'Book ' + x.c.short]) });
+  if (o.roq) { S.pending = { type: 'confirm', yes: () => rateRequest(o) }; return reply(`${o.c.short} is rate-on-request, so I can't book it straight away. Send them a rate request?`, { chips: [['Yes, request', 'yes'], ['Book ' + best().c.short + ' instead', 'Book ' + best().c.short]] }); }
+  select(o);
+  S.pending = { type: 'confirm', yes: () => executeBooking(o) };
+  const card = `<div class="kv"><div><small>Carrier</small><b>${o.c.short}</b></div><div><small>All-in</small><b class="num">${money(o.total)}</b></div><div><small>Departs</small><b>${fmtDate(o.dep)} ${fmtTime(o.dep)}</b></div><div><small>Arrives</small><b>${fmtDate(o.arr)} ${fmtTime(o.arr)}</b></div></div><div class="acts"><button class="fbtn blue" data-cmd="yes">Confirm booking</button><button class="fbtn ghost" data-cmd="not yet">Not yet</button></div>`;
+  return reply(`Booking <b>${o.c.short}</b> for <b>${money(o.total)}</b>, ${fmtKg(o.cw)} chargeable, ${AP[S.q.origin].code} → ${AP[S.q.destination].code}. Shall I confirm?`, { card, chips: [['Confirm', 'yes'], ['Not yet', 'not yet']] });
+}
+async function executeBooking(o) {
+  const id = String(S.shipSeq++); const q = S.q;
+  const sh = { id, o: q.origin, d: q.destination, via: o.legs.length > 1 ? o.legs[0].to : null, carrier: o.c.name, status: 'Booked', grp: 'np', pcs: q.pieces || 1, kg: q.weight, done: 0, age: 0, total: o.total, opt: o, fresh: true };
+  SHIPMENTS.unshift(sh); S.lastBooked = sh; o.booked = true;
+  showView('booked', sh);
+  toast(`Booking confirmed · Shipment ${sid({id})}`);
+  const cut = new Date(o.dep.getTime() - 5 * 3600e3);
+  await reply(`Done — <b>booked</b>. Shipment <b>${sid({id})}</b> with ${o.c.short}. Cargo cut-off is <b>${fmtDate(cut)} ${fmtTime(cut)}</b> at ${AP[q.origin].city}. Want to add shipper and consignee details now, or send the confirmation to your customer first?`,
+    { say: `Done, booked. Shipment ending ${id.slice(-4)} with ${o.c.short}. Cargo cut-off is ${spokenWhen(cut)} in ${AP[q.origin].city}. Want to add the shipper and consignee details now, or send the confirmation to your customer first?`, chips: [['Add details later', 'Remind me later about the details'], ['Send confirmation to customer', 'Send the confirmation to the customer'], ['Track it', 'Track it'], 'Start a new quote'] });
+}
+async function hold(o) { if (!o) return; select(o); o.held = true; renderResults(); toast(`${o.c.short} rate held for 24h`); return reply(`Held — <b>${o.c.short}</b> at ${money(o.total)} is parked for 24 hours. No commitment.`, { chips: defaultChips() }); }
+async function compare(a, b) {
+  if (!a || !b || a === b) return readout();
+  const dp = Math.abs(a.total - b.total), dh = Math.abs(a.hours - b.hours);
+  const cheaper = a.total < b.total ? a : b, faster = a.hours < b.hours ? a : b;
+  let t = `<b>${a.c.short}</b> ${money(a.total)}, ${dur(a.hours)} vs <b>${b.c.short}</b> ${money(b.total)}, ${dur(b.hours)}. `;
+  t += cheaper === faster ? `${cheaper.c.short} wins on both — easy call.` : `${cheaper.c.short} saves you ${money0(dp)}; ${faster.c.short} is ${spokenDur(dh)} quicker. If the customer isn't in a rush, I'd take ${cheaper.c.short}.`;
+  return reply(t, { chips: [['Book ' + cheaper.c.short, 'Book ' + cheaper.c.short], ['Book ' + faster.c.short, 'Book ' + faster.c.short], 'Add 12% margin and send it'] });
+}
+async function readout() {
+  const L = sorted().filter(o => !o.roq).slice(0, 3);
+  const html = L.map((o, i) => `${['First', 'Second', 'Third'][i]}, <b>${o.c.short}</b> — ${money(o.total)}, lands ${spokenWhen(o.arr)}.`).join(' ');
+  return reply(html + ' Which one?', { card: miniCard(L), chips: L.map(o => ['Book ' + o.c.short, 'Book ' + o.c.short]) });
+}
+function cleanName(raw) {
+  let n = raw.replace(/^(it'?s|it is|to|for|send (it )?to|the customer is|customer is|that'?s|they'?re|please)\s+/i, '').replace(/[.!?]+$/, '').trim();
+  if (!n || /^(the )?(customer|client|them|him|her|my customer)$/i.test(n) || n.split(' ').length > 6) return null;
+  return n.replace(/\b\w/g, m => m.toUpperCase());
+}
+async function marginSend(raw, low) {
+  const o = S.sel || best(); if (!o) return;
+  const pm = low.match(/(\d+(?:\.\d+)?)\s*(?:%|percent)/); if (pm) { S.margin = +pm[1]; S.marginSet = true; }
+  const fm = !pm && low.match(/\$\s?(\d+)\b/); if (fm) { S.margin = Math.round(+fm[1] / o.total * 1000) / 10; S.marginSet = true; }
+  const cm = raw.match(/\b(?:send|email|e-mail|share|forward|whatsapp)\b.*?\bto\s+(?:my\s+|the\s+)?(?:customer\s+|client\s+)?([A-Za-z0-9][\w&.'\- ]{1,40})$/i);
+  if (cm) { const n = cleanName(cm[1]); if (n) S.customer = n; }
+  showView('doc');
+  const wantsSend = RX.send.test(low);
+  if (!S.marginSet && wantsSend && /\bconfirmation\b/.test(low)) { toast('Booking confirmation sent'); return reply(`Sent${S.customer ? ' to <b>' + esc(S.customer) + '</b>' : ''} — booking confirmation with routing and cut-off times. Anything else?`, { chips: defaultChips() }); }
+  if (!S.marginSet && !wantsSend) return ask('margin', `What margin do you want on top? ${o.c.short} costs you ${money(o.total)}.`, ['10%', '12%', '15%', '20%']);
+  if (wantsSend && !S.customer) return ask('customer', `${S.marginSet ? `At ${S.margin}% you'd sell at <b>${money(sell(o))}</b> and keep <b>${money(sell(o) - o.total)}</b>. ` : ''}Who's it going to?`, ['Acme Freight', 'Karoo Exports', 'Table Bay Traders']);
+  if (wantsSend) return sendQuote();
+  return marginReply();
+}
+const sell = o => o.total * (1 + S.margin / 100);
+async function marginReply() { const o = S.sel || best(); showView('doc'); renderDoc(); return ask('customer', `At <b>${S.margin}%</b> you'd sell at <b>${money(sell(o))}</b> and keep <b>${money(sell(o) - o.total)}</b>. Who's it for? I'll send it over.`, ['Acme Freight', 'Karoo Exports', 'Table Bay Traders']); }
+async function sendQuote() {
+  const o = S.sel || best(); S.sent = true; showView('doc'); renderDoc();
+  toast(`Quote Q-${S.quoteNo} sent to ${S.customer}`);
+  const valid = new Date(Date.now() + 7 * 864e5);
+  return reply(`Done — <b>${S.margin}%</b> on top puts it at <b>${money(sell(o))}</b>, you keep <b>${money(sell(o) - o.total)}</b>. Quote <b>Q-${S.quoteNo}</b> is on its way to <b>${esc(S.customer)}</b>, valid till ${fmtDate(valid)}. Want me to hold the space with ${o.c.short} while they decide?`,
+    { say: `Done. ${S.margin} percent on top puts it at ${sayMoney(sell(o))}, and you keep ${sayMoney(sell(o) - o.total)}. Quote ${S.quoteNo} is on its way to ${S.customer}, valid for 7 days. Want me to hold the space with ${o.c.short} while they decide?`, chips: [['Hold the space', 'Hold it'], ['Book it now', 'Book it'], ['Try for a better rate', 'Can you get it lower? Try 8% off'], 'Start a new quote'] });
+}
+
+/* ---------------- ops ---------------- */
+const sid = sh => sh.id.length < 6 ? sh.id.padStart(10, '0') : sh.id;
+function findShip(id) { id = String(id).replace(/^0+/, ''); return SHIPMENTS.find(s => s.id === id) || SHIPMENTS.find(s => s.id.endsWith(id) && id.length >= 4); }
+function journey(sh) {
+  const steps = [[sh.o, 'Received'], [sh.o, 'Manifested'], [sh.o, 'Departed']];
+  if (sh.via) steps.push([sh.via, 'Arrived at hub'], [sh.via, 'Departed hub']);
+  steps.push([sh.d, 'Arrived'], [sh.d, 'Customs cleared'], [sh.d, 'Collected by consignee'], [sh.d, 'Proof of delivery']);
+  let done = sh.done;
+  if (!sh.via && sh.done > 3) done = sh.done - 2 + 0;
+  done = Math.min(steps.length, sh.status === 'Delivered' ? steps.length : done);
+  const t0 = Date.now() - sh.age * 3600e3; const per = sh.age / Math.max(1, done + .5);
+  return steps.map((s, i) => ({ ap: s[0], label: s[1], done: i < done, now: i === done && sh.status !== 'Delivered', time: i < done ? new Date(t0 + i * per * 3600e3) : null }));
+}
+async function track(id) {
+  const sh = id ? findShip(id) : (S.lastBooked || null);
+  if (!sh) return reply(id ? `I can't find shipment <b>${esc(id)}</b> on your account. Want to see everything that's moving?` : `Which shipment? Give me the ID, or I can show you what's in transit.`, { chips: [['Show in-transit', 'Show shipments in transit'], ['Track 423344', 'Track 423344'], ['Track 301877', 'Track 301877']] });
+  showView('track', sh);
+  const J = journey(sh); const cur = J.find(j => j.now); const last = [...J].reverse().find(j => j.done);
+  let t = `<b>${sid(sh)}</b>, ${AP[sh.o].city} → ${AP[sh.d].city} with ${sh.carrier}. `;
+  let chips = [['Share tracking with customer', 'Send tracking to the customer'], "What's happening today?", 'Start a new quote'];
+  if (sh.alert) { t += `It landed fine but it's been <b>held by customs at ${AP[sh.d].city} for 2 days</b> — they're waiting on the commercial invoice. Want me to chase the handler and ping your consignee for the invoice?`; chips = [['Chase it', 'Chase it'], ['Not now', 'not now'], 'Share tracking with customer']; S.pending = { type: 'confirm', yes: () => chase(sh.id) }; }
+  else if (sh.status === 'Delivered') t += `Delivered — proof of delivery's in. All wrapped up.`;
+  else if (sh.status === 'Booked' || sh.status === 'Awaiting cargo') t += `Booked and waiting for cargo at ${AP[sh.o].city}. Nothing's been received yet${sh.fresh ? ' — you only just booked it' : ''}.`;
+  else t += `Latest: <b>${last ? last.label.toLowerCase() : 'booked'}</b> at ${AP[last ? last.ap : sh.o].city}${last?.time ? ', ' + spokenWhen(last.time) : ''}. Next up: ${cur ? cur.label.toLowerCase() + ' at ' + AP[cur.ap].city : 'delivery'}. Looking on schedule.`;
+  return reply(t, { chips });
+}
+async function chase(id) {
+  const sh = id ? findShip(id) : SHIPMENTS.find(s => s.alert);
+  if (!sh) return reply("Which shipment should I chase?", { chips: [['Chase 423344', 'Chase 423344']] });
+  sh.chased = true; if (S.view === 'track') showView('track', sh); toast(`Chased · ${AP[sh.d].city} handler + CSN ops desk notified`);
+  return reply(`On it — I've pinged the handler at ${AP[sh.d].city}, flagged it to the CSN ops desk, and emailed your consignee asking for the commercial invoice. I'll let you know the moment it clears.`, { chips: ["What's happening today?", 'Start a new quote', 'Show shipments in transit'] });
+}
+async function brief() {
+  showView('home');
+  const h = new Date().getHours(); const g = h < 12 ? 'Morning!' : h < 17 ? 'Afternoon!' : 'Evening!';
+  const tr = SHIPMENTS.filter(s => s.grp === 'tr').length;
+  S.pending = { type: 'confirm', yes: () => chase('423344'), no: () => reply("Sure, I'll keep an eye on it. Want to start a quote?", { chips: defaultChips() }) };
+  return reply(`${g} Quick rundown: <b>3 booking requests</b> waiting on you, <b>${tr} shipments</b> in the air, and <b>423344</b> has been stuck in customs at San Francisco for two days. Also — Joburg to London rates dipped about <b>6%</b> this week, worth quoting. Shall I chase that customs hold first?`,
+    { chips: [['Chase the customs hold', 'yes'], ['Quote Joburg → London', 'Quote 500 kg Johannesburg to London'], ['Show booking requests', 'Show shipments not presented']] });
+}
+async function shipList(low) {
+  const f = /customs|transit|in the air|moving/.test(low) ? 'tr' : /delivered/.test(low) ? 'dl' : /not presented|awaiting|booking request|bookings/.test(low) ? 'np' : 'all';
+  S.filter = f; showView('shipments');
+  const L = SHIPMENTS.filter(s => f === 'all' || s.grp === f);
+  const lab = f === 'all' ? 'shipments in total' : f === 'tr' ? 'in transit' : f === 'dl' ? 'delivered' : 'not presented yet';
+  return reply(`You've got <b>${L.length}</b> ${lab}.${f === 'tr' ? ' One needs attention — <b>423344</b> is held in customs at SFO.' : ''} Tap any row and I'll pull it up.`, { chips: f === 'tr' ? [['Track 423344', 'Track 423344'], 'Chase it', 'Start a new quote'] : defaultChips() });
+}
+async function greet() { const h = new Date().getHours(); return reply(`${h < 12 ? 'Morning' : h < 17 ? 'Hey' : 'Evening'}! I'm Freddy. Tell me what you're shipping — something like <b>“300 kilos Joburg to Dubai”</b> — and I'll find you the best rate. Or ask me what's happening today.`, { chips: defaultChips() }); }
+async function help() { return reply(`I can <b>quote</b> any lane in seconds (“2 pallets, 400 kg, Cape Town to Frankfurt”), <b>read out</b> the best, cheapest and fastest options, <b>negotiate</b> (“ask Emirates for 8% off”), add your <b>margin and send</b> the quote to a customer, <b>book</b>, and <b>track or chase</b> shipments. Just talk to me like your ops desk.`, { chips: ['Quote 2 pallets 400 kg Cape Town to Frankfurt', "What's happening today?", 'Track 301877'] }); }
+async function fallback(raw) {
+  if (S.pending && S.pending.type === 'ask') { const sl = S.pending.slot; const hint = { weight: 'Just the weight is fine — like “250 kilos”.', dims: 'Say it like “120 by 80 by 100”, or “skip”.', customer: 'Just the company name is fine.', margin: 'A percentage works — like “12%”.', rrTarget: 'Try “8% off” or “$2.10 a kilo”.', origin: 'A city or airport code works.', destination: 'A city or airport code works.', lane: 'Like “Durban to Hong Kong”.', un: 'Like “UN3480”, or “skip”.' }[sl]; if (hint) return reply(`Sorry, didn't quite catch that. ${hint}`, { chips: $('#chips').children.length ? undefined : defaultChips() }); }
+  return reply(pick(["Hmm, didn't quite get that.", "Sorry — I missed that one."]) + ` Try something like <b>“quote 300 kg Joburg to Dubai”</b>, <b>“track 423344”</b>, or <b>“what's happening today?”</b>`, { chips: defaultChips() });
+}
+function resetQuote(talk) {
+  S.q = null; S.opts = []; S.sel = null; S.pending = null; S.sent = false; S.marginSet = false; S.margin = 12; S.customer = null; S.quoteNo++;
+  if (talk) { S.q = newQuote(); showView('quote'); updateQuoteView(); return ask('lane', pick(["Fresh sheet. Where's it going from and to?", "Clean slate — what's the lane?"]), [['Joburg → London', 'Johannesburg to London'], ['Cape Town → Dubai', 'Cape Town to Dubai'], ['Durban → Hong Kong', 'Durban to Hong Kong']]); }
+}
+
+/* ---------------- views ---------------- */
+const IC = {
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>',
+  inbox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1Z"/></svg>',
+  trend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 17-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/></svg>',
+  arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>',
+  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:.9rem;height:.9rem"><path d="m6 9 6 6 6-6"/></svg>'
+};
+function showView(v, arg) {
+  const same = S.view === v && S.viewArg === arg;
+  S.view = v; S.viewArg = arg; $$('.rail [data-nav]').forEach(b => b.classList.toggle('on', b.dataset.nav === v || (v !== 'home' && v !== 'shipments' && v !== 'track' && b.dataset.nav === 'quote') || (v === 'track' && b.dataset.nav === 'shipments')));
+  if (same && v !== 'shipments') { if (v === 'doc') renderDoc(); return; }
+  const el = $('#view'); el.className = 'view'; void el.offsetWidth;
+  if (v === 'home') el.innerHTML = homeHTML();
+  else if (v === 'quote') { el.innerHTML = quoteShellHTML(); updateQuoteView(); if (S.opts.length) renderResults(); else renderResultsEmpty(); }
+  else if (v === 'doc') { el.innerHTML = `<div class="q-head"><div><div class="h-eyebrow">Customer quotation</div><h2>Quote Q-${S.quoteNo}</h2></div><button class="btn" data-act="back-quote">← Back to options</button></div><div class="doc-wrap"><div class="card doc" id="doc"></div><div class="card side-panel" id="mside"></div></div>`; renderDoc(); }
+  else if (v === 'booked') el.innerHTML = bookedHTML(arg);
+  else if (v === 'track') el.innerHTML = trackHTML(arg);
+  else if (v === 'shipments') el.innerHTML = shipmentsHTML();
+  $('#stage').scrollTo({ top: 0, behavior: 'smooth' });
+}
+function greeting() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
+function shipRows(list) { return list.map(s => `<tr data-cmd="Track ${s.id}"><td class="id">${s.id}</td><td>${s.carrier.split(' ')[0].replace('IAG', 'BA')}</td><td>${s.o} → ${s.d}</td><td><span class="st ${s.alert && !s.chased ? 'al' : GRP[s.grp][1]}">${s.status}</span></td></tr>`).join(''); }
+function homeHTML() {
+  const c = g => SHIPMENTS.filter(s => s.grp === g).length;
+  return `<div class="h-eyebrow" style="margin-top:.6rem">Dashboard</div><h1 class="hello">${greeting()}, <b>GroupAir South Africa</b></h1><p class="sub">Freddy is watching ${SHIPMENTS.length} shipments and 6,000+ routes for you.</p>
+  <div class="insights">
+    <div class="card ins"><span class="fr-badge">Freddy noticed</span><div class="ic" style="background:var(--red-soft);color:var(--red)">${IC.alert}</div><p><b>423344</b> has been held in customs at <b>SFO</b> for 2 days — missing commercial invoice.</p><button class="go" data-cmd="Chase 423344">Chase it ${IC.arrow}</button></div>
+    <div class="card ins"><span class="fr-badge">Waiting on you</span><div class="ic" style="background:#E9EEFF;color:var(--blue)">${IC.inbox}</div><p><b>3 booking requests</b> need shipper details before tomorrow's cut-off.</p><button class="go" data-cmd="Show shipments not presented">Review them ${IC.arrow}</button></div>
+    <div class="card ins"><span class="fr-badge">Market</span><div class="ic" style="background:var(--green-soft);color:var(--green)">${IC.trend}</div><p><b>JNB → LHR</b> rates are down <b>6%</b> this week. Good moment to re-quote.</p><button class="go" data-cmd="Quote 500 kg Johannesburg to London">Quote it ${IC.arrow}</button></div>
+  </div>
+  <div class="g2">
+    <div class="kpis">
+      <button class="kpi" data-cmd="Show me spot rate requests"><span>Spot Rate Request</span><div class="n">0 ${IC.arrow}</div></button>
+      <button class="kpi" data-cmd="Show me spot rate reviews"><span>Spot Rate Review</span><div class="n">0 ${IC.arrow}</div></button>
+      <button class="kpi" data-cmd="Show shipments not presented"><span>Booking Request</span><div class="n">3 ${IC.arrow}</div></button>
+      <button class="kpi" data-cmd="Show all shipments"><span>Active Bookings</span><div class="n">${SHIPMENTS.length} ${IC.arrow}</div></button>
+    </div>
+    <div class="card ship-card"><div class="hd"><b>Shipment status</b><span class="pill-n">${SHIPMENTS.length}</span></div>
+      <div class="filters"><button data-act="flt:all" class="on">All</button><button data-act="flt:np" class="f-np">Not Presented <span class="pill-n">${c('np')}</span></button><button data-act="flt:tr" class="f-tr">In Transit <span class="pill-n">${c('tr')}</span></button><button data-act="flt:dl" class="f-dl">Delivered <span class="pill-n">${c('dl')}</span></button></div>
+      <table class="ships"><thead><tr><th>Shipment ID</th><th>Carrier</th><th>Route</th><th>Status</th></tr></thead><tbody id="homeRows">${shipRows(SHIPMENTS.slice(0, 6))}</tbody></table>
+    </div>
+  </div>
+  <div class="card lanes"><span class="h-eyebrow">Quick quote · your lanes</span>
+    <button class="lane-chip" data-cmd="Quote 300 kg Johannesburg to London">JNB → LHR <small>300 kg</small></button>
+    <button class="lane-chip" data-cmd="Quote 2 pallets 450 kg Cape Town to Dubai">CPT → DXB <small>2 plts</small></button>
+    <button class="lane-chip" data-cmd="Quote 1 tonne Durban to Hong Kong">DUR → HKG <small>1 t</small></button>
+    <button class="lane-chip" data-cmd="Quote 120 kg lithium batteries Johannesburg to Frankfurt">JNB → FRA <small>DG</small></button>
+    <button class="lane-chip" data-cmd="Quote 80 kg pharma Johannesburg to Nairobi">JNB → NBO <small>Pharma</small></button>
+  </div>`;
+}
+function quoteShellHTML() {
+  return `<div class="q-head"><div><div class="h-eyebrow">New quote / booking</div><h2 id="qTitle">Let's find you a rate</h2></div><div class="steps"><span class="on" id="st1"><i>1</i>Details</span><span class="ln"></span><span id="st2"><i>2</i>Routes</span></div></div>
+  <div class="hero" id="hero"></div>
+  <div class="q-grid"><div class="card sheet" id="sheet"></div><div id="results"></div></div>`;
+}
+function heroHTML() {
+  const q = S.q || newQuote(); const o = q.origin && AP[q.origin], d = q.destination && AP[q.destination];
+  const opt = S.sel; const stops = opt && o && d ? opt.legs.slice(0, -1).map(l => l.to) : [];
+  const P = t => { const x = (1 - t) ** 2 * 60 + 2 * (1 - t) * t * 400 + t * t * 740, y = (1 - t) ** 2 * 150 + 2 * (1 - t) * t * 10 + t * t * 150; return [x, y]; };
+  const stopsSvg = stops.map((s, i) => { const [x, y] = P((i + 1) / (stops.length + 1)); return `<circle cx="${x}" cy="${y}" r="5" fill="#0B0B33" stroke="#7FE0FF" stroke-width="2"/><text x="${x}" y="${y - 12}" text-anchor="middle" fill="#BFD0FF" font-size="12" font-weight="700" font-family="Inter">${s}</text>`; }).join('');
+  const meta = o && d ? `<div><span>Distance</span><b>${Math.round(hav(o, d)).toLocaleString()} km</b></div><div><span>Product</span><b>${{ A2A: 'Airport to Airport', D2D: 'Door to Door', D2A: 'Door to Airport', A2D: 'Airport to Door' }[q.product]}</b></div><div><span>Chargeable</span><b>${q.weight ? fmtKg(chargeable(q)) : '—'}</b></div><div><span>Cargo ready</span><b>${q.readyLabel}</b></div>${opt && !opt.roq ? `<div><span>${opt.c.short}</span><b>${dur(opt.hours)} · ${opt.co2.toLocaleString()} kg CO₂</b></div>` : ''}` : `<div><span>Say something like</span><b>“2 pallets, 400 kg, Cape Town to Frankfurt”</b></div>`;
+  return `<svg class="arc" viewBox="0 0 800 190" preserveAspectRatio="none"><defs><linearGradient id="ag" x1="0" x2="1"><stop offset="0" stop-color="#5BC2F0" stop-opacity=".2"/><stop offset=".5" stop-color="#9FE6FF"/><stop offset="1" stop-color="#5BC2F0" stop-opacity=".2"/></linearGradient></defs>
+  <path id="arcp" d="M60 150 Q400 10 740 150" fill="none" stroke="url(#ag)" stroke-width="2" stroke-dasharray="6 7"/>${o && d ? `<g><path d="M-9 -6 L9 0 L-9 6 L-5 0 Z" fill="#fff"/><animateMotion dur="7s" repeatCount="indefinite" rotate="auto" keyPoints="0;1" keyTimes="0;1" calcMode="linear"><mpath href="#arcp"/></animateMotion></g>` : ''}${stopsSvg}</svg>
+  <div class="ends"><div class="end"><small>Origin</small><div class="code ${o ? '' : 'ph'}">${o ? o.code : '———'}</div><span>${o ? o.city + ' · ' + o.name : 'Where from?'}</span></div><div class="end r"><small>Destination</small><div class="code ${d ? '' : 'ph'}">${d ? d.code : '———'}</div><span>${d ? d.city + ' · ' + d.name : 'Where to?'}</span></div></div>
+  <div class="meta">${meta}</div>`;
+}
+function sheetHTML() {
+  const q = S.q || newQuote(); const ch = q.changed || [];
+  const f = (key, label, val, opts = {}) => `<div class="fld ${opts.cls || ''} ${ch.includes(key) ? 'flash' : ''}" data-edit="${opts.edit || label}"><small>${label}</small><span class="${val == null || val === '' ? 'empty' : ''}">${val == null || val === '' ? (opts.ph || '—') : val}${opts.assumed ? '<em>ASSUMED</em>' : ''}</span></div>`;
+  const vw = volW(q);
+  return `<div class="hd"><b>Quote sheet</b><span class="live">Live</span></div>
+  ${f('origin', 'Origin', q.origin ? `${AP[q.origin].city} (${q.origin})` : null, { ph: 'Ask Freddy', edit: 'origin' })}
+  ${f('destination', 'Destination', q.destination ? `${AP[q.destination].city} (${q.destination})` : null, { ph: 'Ask Freddy', edit: 'destination' })}
+  ${f('product', 'Product', { A2A: 'Airport → Airport', D2D: 'Door → Door', D2A: 'Door → Airport', A2D: 'Airport → Door' }[q.product] + (q.post ? ' · ' + esc(q.post) : ''), { assumed: q.product === 'A2A' && !ch.includes('product') && !q.productSet, edit: 'product' })}
+  ${f('cargo', 'Cargo type', q.cargo + (q.un ? ' · ' + q.un : ''), { cls: q.cargo === 'Dangerous Goods' ? 'dg' : '', edit: 'cargo type' })}
+  ${f('pieces', 'Pieces', q.pieces ? `${q.pieces} × ${q.unit || 'piece'}` : null, { edit: 'pieces' })}
+  ${f('dims', 'Dimensions', q.dims ? `${q.dims.l} × ${q.dims.w} × ${q.dims.h} cm` : null, { ph: q.dimsAsked ? 'Not given' : '—', edit: 'dimensions' })}
+  ${f('weight', 'Gross weight', q.weight ? fmtKg(q.weight) : null, { edit: 'weight' })}
+  ${f('dims', 'Volumetric', vw ? `${fmtKg(Math.ceil(vw))} · ${volM3(q).toFixed(2)} m³` : null, { edit: 'dimensions' })}
+  ${f('weight', 'Chargeable', q.weight ? fmtKg(chargeable(q)) : null, { cls: 'key', edit: 'weight' })}
+  ${f('ready', 'Cargo ready', q.readyLabel, { assumed: q.readyAssumed, edit: 'ready date' })}
+  ${f('handling', 'Handling', [q.screened ? 'Screened' : 'Unscreened', q.stackable === false ? 'Not stackable' : q.stackable ? 'Stackable' : null].filter(Boolean).join(' · '), { edit: 'handling' })}
+  ${q.carrier ? f('carrier', 'Preferred', CR[q.carrier].short, { edit: 'carrier' }) : ''}
+  ${f('desc', 'Description', q.desc ? esc(q.desc) : null, { ph: 'Optional', edit: 'description' })}`;
+}
+function updateQuoteView() {
+  if (S.view !== 'quote') return;
+  const h = $('#hero'), sh = $('#sheet'); if (!h) return;
+  h.innerHTML = heroHTML(); sh.innerHTML = sheetHTML();
+  const q = S.q; $('#qTitle').textContent = q && q.origin && q.destination ? `${AP[q.origin].city} → ${AP[q.destination].city}` : "Let's find you a rate";
+  $('#st2').classList.toggle('on', S.opts.length > 0);
+  if (q) q.changed = [];
+}
+function renderResultsEmpty() { const r = $('#results'); if (r) r.innerHTML = `<div class="card empty-res"><div class="ghost-orb"></div><div class="big">Live rates land here</div><p>Tell Freddy the lane and weight. He'll fill the sheet, check every carrier on the network, and read you the best options.</p></div>`; }
+function renderSearching() {
+  const r = $('#results'); if (!r) return; const list = CARRIERS.slice(0, 12);
+  r.innerHTML = `<div class="card searching"><div class="res-head"><b>Checking live tariffs…</b><small>${CARRIERS.length} carriers · 6,000+ routes</small></div><div class="bar"><i></i></div><div class="scan">${list.map((c, i) => `<div style="animation-delay:${i * 120}ms"><span class="mono" style="background:${c.color}">${c.id}</span>${c.short}</div>`).join('')}</div></div><div class="skel"></div><div class="skel" style="opacity:.6"></div>`;
+}
+function optHTML(o) {
+  const tagMap = { best: ['best', "Freddy's pick"], cheap: ['cheap', 'Cheapest'], fast: ['fast', 'Fastest'], eco: ['eco', 'Lowest CO₂'], multi: ['multi', 'Single AWB · multi-carrier'], spot: ['spot', 'Spot rate'] };
+  const tags = o.tags.map(t => tagMap[t]).filter(Boolean).map(([c, l]) => `<span class="tag ${c}">${l}</span>`).join('') + (o.held ? '<span class="tag held">Held 24h</span>' : '') + (o.requested ? '<span class="tag spot">Rate requested…</span>' : '') + (o.booked ? '<span class="tag cheap">Booked</span>' : '');
+  const L = o.legs; const stopsHTML = L.slice(0, -1).map((l, i) => `<div class="stop" style="left:${((i + 1) / L.length) * 100}%"><i></i><span>${l.to} · ${fmtTime(l.arr)}</span></div>`).join('');
+  const exp = S.expanded === o.id;
+  const charges = exp && !o.roq ? `<div class="charges"><table>${o.charges.map(([n, v]) => `<tr><td>${n}</td><td>${money(v)}</td></tr>`).join('')}<tr class="tot"><td>Total (USD)</td><td>${money(o.total)}</td></tr></table><div class="side"><small>Min. weight</small><b>${o.minW} kg</b><small>Service type</small><b>${o.c.service || (o.c.short + ' · General')}</b><small>Aircraft</small><b>${o.aircraft}</b><small>Distance flown</small><b>${Math.round(o.km).toLocaleString()} km</b></div></div>` : '';
+  return `<div class="card opt ${S.sel === o ? 'sel' : ''}" data-id="${o.id}">
+    <div class="top"><div class="mono" style="background:${o.c.color}">${o.id}</div><div class="nm"><b>${o.c.name}</b><small>${o.c.service || (S.q.cargo)}</small><div class="tags">${tags}</div></div>
+    <div class="price">${o.roq ? `<div class="t roq" style="color:var(--blue)">RATE ON REQUEST</div><small>${Math.round(o.km).toLocaleString()} km</small>` : `<div class="t num">${o.was ? `<span class="was">${money0(o.was)}</span>` : ''}${money(o.total)}</div><small>${money(o.perKg)} / KG</small>`}</div></div>
+    <div class="tl"><div class="pt"><small>${L[0].from}</small><b>${fmtTime(o.dep)}</b><span>${fmtDate(o.dep)}</span></div><div class="line"><span class="end l"></span>${stopsHTML}<span class="end r"></span><span class="dur">${dur(o.hours)}</span></div><div class="pt r"><small>${L[L.length - 1].to}</small><b>${fmtTime(o.arr)}</b><span>${fmtDate(o.arr)}</span></div></div>
+    <div class="bot"><div class="legs"><div class="leg"><b>${S.q.origin} → ${S.q.destination}</b><span>Cargo Solutions Network</span></div>${L.length > 1 || o.c.multi ? L.map(l => `<div class="leg"><b>${l.from} → ${l.to}</b><span>${l.by}</span></div>`).join('') : `<div class="leg"><b>${L[0].from} → ${L[0].to}</b><span>${o.c.short}</span></div>`}</div>
+    <div class="acts"><button class="btn ic" data-cmd="Hold ${o.c.short}" title="Hold rate">${IC.book}</button><button class="btn ${o.roq ? 'req' : ''}" data-cmd="Ask ${o.c.short} for a better rate">Rate request</button>${o.roq ? '' : `<button class="btn pri" data-cmd="Book ${o.c.short}">${IC.check} Book</button>`}</div></div>
+    ${o.roq ? '' : `<button class="exp" data-act="exp:${o.id}">${exp ? 'Hide' : 'Show'} charges ${IC.chev}</button>`}${charges}
+    <div class="footnote">${o.roq ? 'Carrier quotes this lane on request.' : 'Total includes additional sub-charges.'} · ${o.co2.toLocaleString()} kg CO₂e</div>
+  </div>`;
+}
+function renderResults() {
+  const r = $('#results'); if (!r || S.view !== 'quote') return;
+  if (!S.opts.length) { r.innerHTML = `<div class="card empty-res"><div class="ghost-orb"></div><div class="big">No tariffs found for this enquiry</div><p>But we can still help — CSN will prepare a tailored offer on request.</p><button class="btn pri" data-cmd="yes">Request a quote</button></div>`; return; }
+  const segs = [['value', 'Best value'], ['cheap', 'Cheapest'], ['fast', 'Fastest'], ['eco', 'Greenest']];
+  r.innerHTML = `<div class="res-head"><div><b>Showing ${S.opts.length} routes</b><small>${fmtKg(S.opts[0].cw)} chargeable${S.excludedDG ? ` · ${S.excludedDG} carriers excluded (no DG)` : ''}</small></div><div class="seg">${segs.map(([k, l]) => `<button data-act="sort:${k}" class="${S.sort === k ? 'on' : ''}">${l}</button>`).join('')}</div></div><div class="res-list">${sorted().map(optHTML).join('')}</div>`;
+  const h = $('#hero'); if (h) h.innerHTML = heroHTML();
+}
+function renderDoc() {
+  const o = S.sel || best(); const d = $('#doc'), m = $('#mside'); if (!o || !d) return;
+  const q = S.q; const s = sell(o); const valid = new Date(Date.now() + 7 * 864e5);
+  d.classList.toggle('sent', S.sent);
+  d.innerHTML = `<div class="stamp">Sent</div><div class="dh"><div class="brand">GroupAir South Africa<span class="pw">Air freight quotation · powered by ${LOGO_FULL}</span></div><div class="qn">Quotation<b>Q-${S.quoteNo}</b>${fmtDate(new Date())}</div></div>
+  <h3>${AP[q.origin].city} → ${AP[q.destination].city}</h3><div class="to">Prepared for <b>${S.customer ? esc(S.customer) : 'Customer name'}</b> · valid until ${fmtDate(valid)}</div>
+  <table><thead><tr><th>Description</th><th>Detail</th><th>Amount</th></tr></thead><tbody>
+  <tr><td>Air freight · ${o.c.short}</td><td>${q.origin} → ${q.destination}${o.legs.length > 1 ? ' via ' + o.legs.slice(0, -1).map(l => l.to).join(', ') : ''}</td><td>${money(s * .78)}</td></tr>
+  <tr><td>Fuel & security surcharges</td><td>${fmtKg(o.cw)} chargeable</td><td>${money(s * .15)}</td></tr>
+  <tr><td>Handling & documentation</td><td>${q.cargo}${q.un ? ' · ' + q.un : ''}</td><td>${money(s * .07)}</td></tr>
+  <tr><td>Schedule</td><td>Dep ${fmtDate(o.dep)} ${fmtTime(o.dep)} · Arr ${fmtDate(o.arr)} ${fmtTime(o.arr)}</td><td>${dur(o.hours)}</td></tr>
+  </tbody></table>
+  <div class="total"><span>Total, all-in (USD)</span><b class="num">${money(s)}</b></div>
+  <div class="terms">Rate based on ${fmtKg(o.cw)} chargeable weight; subject to the weight on the signed AWB. Quotes valid for 7 days and subject to space confirmation at time of booking. Carried under IATA and carrier conditions; insurance not included.</div>`;
+  m.innerHTML = `<h4>Your margin</h4><div class="mval num" id="mval">${S.margin}%</div><input type="range" min="0" max="35" step="0.5" value="${S.margin}" id="mrange">
+  <div class="mrow"><span>Buy (${o.c.short})</span><b>${money(o.total)}</b></div><div class="mrow"><span>Sell</span><b>${money(s)}</b></div><div class="mrow big"><span>You keep</span><b>${money(s - o.total)}</b></div>
+  <button class="btn pri" data-cmd="${S.customer ? 'Send it to ' + esc(S.customer) : 'Send the quote to the customer'}">${S.sent ? 'Resend quote' : 'Send to customer'}</button><button class="btn" data-act="copy">Copy quote text</button><button class="btn dark" data-cmd="Book ${o.c.short}">Book ${o.c.short}</button>`;
+}
+function bookedHTML(sh) {
+  const o = sh.opt; const steps = ['Booking confirmed', 'Shipper & consignee details', 'Cargo received at ' + sh.o, 'Manifested', 'Departed ' + sh.o, 'Arrived ' + sh.d, 'Delivered'];
+  return `<div class="card booked"><svg class="check" viewBox="0 0 80 80"><circle cx="40" cy="40" r="36"/><path d="M25 41l10 10 20-22"/></svg><div class="h-eyebrow">Booking confirmed</div><h2>You're booked with ${o.c.short}</h2><div class="sid">Shipment ${sid(sh)}</div>
+  <div class="bk-grid"><div><small>Route</small><b>${sh.o} → ${sh.d}${sh.via ? ' via ' + sh.via : ''}</b></div><div><small>Departs</small><b>${fmtDate(o.dep)} ${fmtTime(o.dep)}</b></div><div><small>Arrives</small><b>${fmtDate(o.arr)} ${fmtTime(o.arr)}</b></div><div><small>All-in</small><b>${money(o.total)}</b></div></div></div>
+  <div class="card next"><h4>Next steps — Freddy will nudge you</h4>
+   <div class="todo"><i class="ok"></i><span>Space confirmed with ${o.c.short}</span></div>
+   <div class="todo"><i></i><span>Add shipper & consignee details</span><button class="btn" data-cmd="Remind me later about the details">Remind me</button></div>
+   <div class="todo"><i></i><span>Drop cargo at ${AP[sh.o].city} before cut-off</span></div>
+   <div class="todo"><i></i><span>Send AWB copy to carrier</span></div>
+   <div class="todo"><i></i><span>Share confirmation with ${S.customer ? esc(S.customer) : 'your customer'}</span><button class="btn" data-cmd="Send the confirmation to the customer">Send</button></div>
+  </div>
+  <div class="card journey" style="margin-top:1rem"><h4>Milestones</h4>${steps.map((s, i) => `<div class="jstep ${i === 0 ? 'done' : i === 1 ? 'now' : 'todo-s'}"><i></i><span>${s}</span><span class="tm">${i === 0 ? fmtTime(new Date()) : ''}</span></div>`).join('')}</div>`;
+}
+function trackHTML(sh) {
+  const J = journey(sh); const o = AP[sh.o], d = AP[sh.d];
+  const doneN = J.filter(j => j.done).length; const frac = Math.min(.97, Math.max(.03, doneN / J.length));
+  const groups = []; J.forEach(j => { const g = groups[groups.length - 1]; if (!g || g.ap !== j.ap) groups.push({ ap: j.ap, steps: [j] }); else g.steps.push(j); });
+  const P = t => [(1 - t) ** 2 * 60 + 2 * (1 - t) * t * 400 + t * t * 740, (1 - t) ** 2 * 150 + 2 * (1 - t) * t * 10 + t * t * 150];
+  const [px, py] = P(frac), [px2, py2] = P(frac + .01); const ang = Math.atan2(py2 - py, px2 - px) * 180 / Math.PI;
+  return `<div class="q-head"><div><div class="h-eyebrow">Shipment tracking</div><h2>${sid(sh)}</h2></div><button class="btn" data-nav-act="shipments">All shipments</button></div>
+  <div class="hero"><svg class="arc" viewBox="0 0 800 190" preserveAspectRatio="none"><path d="M60 150 Q400 10 740 150" fill="none" stroke="rgba(159,230,255,.35)" stroke-width="2" stroke-dasharray="6 7"/><path d="M60 150 Q400 10 740 150" fill="none" stroke="#7FE0FF" stroke-width="2.5" pathLength="100" stroke-dasharray="${frac * 100} 100"/><g transform="translate(${px} ${py}) rotate(${ang})"><circle r="14" fill="rgba(127,224,255,.18)"/><path d="M-9 -6 L9 0 L-9 6 L-5 0 Z" fill="#fff"/></g></svg>
+  <div class="ends"><div class="end"><small>Origin</small><div class="code">${o.code}</div><span>${o.city}</span></div><div class="end r"><small>Destination</small><div class="code">${d.code}</div><span>${d.city}</span></div></div>
+  <div class="meta"><div><span>Carrier</span><b>${sh.carrier}</b></div><div><span>Pieces / weight</span><b>${sh.pcs} pcs · ${fmtKg(sh.kg)}</b></div><div><span>Status</span><b>${sh.status}</b></div>${sh.via ? `<div><span>Via</span><b>${AP[sh.via].city}</b></div>` : ''}</div></div>
+  ${sh.alert ? `<div class="alert">${IC.alert.replace('<svg', '<svg style="width:1.2rem;height:1.2rem;flex:none"')}<div><b>${sh.chased ? 'Chased — waiting on handler' : 'Needs attention'}</b><br>${sh.alert}</div>${sh.chased ? '' : '<button class="btn" data-cmd="Chase it">Chase it</button>'}</div>` : ''}
+  <div class="trk"><div class="card journey"><h4>Shipping journey</h4>${groups.map(g => `<div class="jgroup"><div class="gh">${g.ap} · ${AP[g.ap].city}${g.ap === sh.o ? ' (Origin)' : g.ap === sh.d ? ' (Destination)' : ' (Sector)'}</div>${g.steps.map(j => `<div class="jstep ${j.done ? 'done' : j.now ? 'now' + (sh.alert && /Customs/.test(j.label) ? ' al' : '') : 'todo-s'}"><i></i><span>${j.label}</span><span class="tm">${j.time ? fmtDate(j.time) + ' ' + fmtTime(j.time) : j.now ? 'In progress' : '—'}</span></div>`).join('')}</div>`).join('')}</div>
+  <div class="card trk-info"><h4>Booking milestones</h4><div class="mrow"><span>Booking raised</span><b>${fmtDate(hoursAgo(sh.age + 30))}</b></div><div class="mrow"><span>Job / presentation</span><b>${fmtDate(hoursAgo(sh.age + 8))}</b></div><div class="mrow"><span>Custom status</span><b>T1</b></div><div class="mrow"><span>Tracking notes</span><b>${sh.chased ? 'Chased by Freddy' : 'None'}</b></div><button class="btn pri" style="width:100%;justify-content:center;margin-top:1rem" data-cmd="Send tracking to the customer">Share tracking link</button></div></div>`;
+}
+function shipmentsHTML() {
+  const c = g => SHIPMENTS.filter(s => s.grp === g).length; const L = SHIPMENTS.filter(s => S.filter === 'all' || s.grp === S.filter);
+  return `<div class="q-head"><div><div class="h-eyebrow">Shipments</div><h2>All shipments</h2></div></div><div class="card ship-card"><div class="filters"><button data-act="flt2:all" class="${S.filter === 'all' ? 'on' : ''}">All <span class="pill-n">${SHIPMENTS.length}</span></button><button data-act="flt2:np" class="f-np ${S.filter === 'np' ? 'on' : ''}">Not Presented <span class="pill-n">${c('np')}</span></button><button data-act="flt2:tr" class="f-tr ${S.filter === 'tr' ? 'on' : ''}">In Transit <span class="pill-n">${c('tr')}</span></button><button data-act="flt2:dl" class="f-dl ${S.filter === 'dl' ? 'on' : ''}">Delivered <span class="pill-n">${c('dl')}</span></button></div>
+  <table class="ships"><thead><tr><th>Shipment ID</th><th>Carrier</th><th>Route</th><th>Status</th></tr></thead><tbody>${shipRows(L)}</tbody></table></div>`;
+}
+
+/* ---------------- misc UI ---------------- */
+function toast(msg, kind) { const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = `<i class="${kind === 'w' ? 'w' : ''}">${kind === 'w' ? '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M12 7v6M12 17h.01"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>'}</i><span>${esc(msg)}</span>`; $('#toasts').appendChild(t); setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 400); }, kind === 'w' ? 5200 : 3400); }
+function touch() { S.touched = Date.now(); }
+document.addEventListener('click', e => {
+  touch();
+  const c = e.target.closest('[data-cmd]'); if (c) { e.preventDefault(); const cmd = c.dataset.cmd; if (cmd.endsWith(' ')) { const i = $('#askInput'); i.value = cmd; i.focus(); return; } submit(cmd, 'tap'); return; }
+  const a = e.target.closest('[data-act]'); if (a) {
+    const [k, v] = a.dataset.act.split(':');
+    if (k === 'sort') { S.sort = v; renderResults(); }
+    else if (k === 'exp') { S.expanded = S.expanded === v ? null : v; renderResults(); }
+    else if (k === 'sel') { const o = S.opts.find(x => x.id === v); if (o) { if (S.view !== 'quote') showView('quote'); select(o); } }
+    else if (k === 'flt') { $$('.ship-card .filters button').forEach(b => b.classList.toggle('on', b === a)); $('#homeRows').innerHTML = shipRows(SHIPMENTS.filter(s => v === 'all' || s.grp === v)); }
+    else if (k === 'flt2') { S.filter = v; showView('shipments'); }
+    else if (k === 'back-quote') showView('quote');
+    else if (k === 'copy') { const o = S.sel || best(); const txt = `Quotation Q-${S.quoteNo} — ${AP[S.q.origin].city} → ${AP[S.q.destination].city}\n${o.c.short}, ${fmtKg(o.cw)} chargeable\nDep ${fmtDate(o.dep)} ${fmtTime(o.dep)} · Arr ${fmtDate(o.arr)} ${fmtTime(o.arr)}\nTotal all-in: ${money(sell(o))} USD · valid 7 days`; try { navigator.clipboard.writeText(txt).then(() => toast('Quote copied'), () => toast('Copy blocked here', 'w')); } catch (er) { toast('Copy blocked here', 'w'); } }
+    return;
+  }
+  const n = e.target.closest('[data-nav]'); if (n) { const v = n.dataset.nav; if (v === 'quote') { if (!S.q) { S.q = newQuote(); } showView('quote'); } else if (v === 'shipments') { S.filter = 'all'; showView('shipments'); } else showView(v); return; }
+  const na = e.target.closest('[data-nav-act]'); if (na) { S.filter = 'all'; showView('shipments'); return; }
+  const ed = e.target.closest('[data-edit]'); if (ed) { const i = $('#askInput'); i.value = `Change the ${ed.dataset.edit} to `; i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+});
+document.addEventListener('input', e => { if (e.target.id === 'mrange') { S.margin = +e.target.value; S.marginSet = true; const o = S.sel || best(); $('#mval').textContent = S.margin + '%'; renderDoc(); } });
+$('#askForm').addEventListener('submit', e => { e.preventDefault(); const i = $('#askInput'); const v = i.value; i.value = ''; submit(v, 'text'); });
+$('#searchForm').addEventListener('submit', e => { e.preventDefault(); const i = $('#searchInput'); const v = i.value.trim(); i.value = ''; if (/^\d{4,10}$/.test(v)) submit('Track ' + v, 'text'); else submit(v, 'text'); });
+$('#orbBtn').addEventListener('click', () => {
+  touch(); if (S.demo) { stopDemo(); return; }
+  if ($('#app').classList.contains('collapsed')) { expand(); if (!S.started) begin('talk'); else startListening(); return; }
+  if (!S.started) return begin('talk');
+  if (S.listening) { if ($('#fw').classList.contains('window')) { clearTimeout(autoTimer); $('#fw').classList.remove('window'); } else stopListening(); } else startListening();
+});
+$('#askInput').addEventListener('input', () => { if (S.listening && $('#fw').classList.contains('window')) cancelListening(); });
+let spaceDown = false;
+document.addEventListener('keydown', e => { if (e.code === 'Space' && !spaceDown && S.started && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); spaceDown = true; startListening(); } if (e.key === 'Escape') { stopSpeaking(); stopDemo(); cancelListening(); } });
+document.addEventListener('keyup', e => { if (e.code === 'Space' && spaceDown) { spaceDown = false; stopListening(); } });
+function setMuted(m) { S.muted = m; if (m) stopSpeaking(); $('#muteBtn').classList.toggle('on', m); $('#muteBtn .w1').style.display = m ? 'none' : ''; $('#muteBtn .w0').style.display = m ? '' : 'none'; $('#swVoice').classList.toggle('on', !m); }
+$('#muteBtn').addEventListener('click', () => setMuted(!S.muted));
+function collapse() { cancelListening(); $('#app').classList.add('collapsed'); }
+function expand() { $('#app').classList.remove('collapsed'); }
+$('#collapseBtn').addEventListener('click', collapse);
+$('#expandBtn').addEventListener('click', () => { expand(); if (S.started) setTimeout(autoListen, 450); });
+$('#settingsBtn').addEventListener('click', () => { loadVoices(); $('#modal').classList.add('show'); });
+$('#closeModal').addEventListener('click', () => $('#modal').classList.remove('show'));
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') $('#modal').classList.remove('show'); });
+$('#voiceSel').addEventListener('change', e => { voice = synth.getVoices().find(v => v.name === e.target.value) || voice; speak("Hi, I'm Freddy. This is how I sound."); });
+$('#rateSel').addEventListener('change', e => { S.rate = +e.target.value; });
+$('#swAuto').addEventListener('click', () => { S.autoListen = !S.autoListen; $('#swAuto').classList.toggle('on', S.autoListen); if (!S.autoListen) cancelListening(); });
+$('#swVoice').addEventListener('click', () => setMuted(!S.muted));
+$('#resetBtn').addEventListener('click', () => { $('#modal').classList.remove('show'); hardReset(); });
+$('#tourBtn').addEventListener('click', () => { $('#modal').classList.remove('show'); expand(); if (!S.started) begin('tour'); else runDemo(); });
+function hardReset() { stopDemo(true); stopSpeaking(); cancelListening(); resetQuote(false); feed().innerHTML = ''; setChips([]); SHIPMENTS.forEach(s => s.chased = false); for (let i = SHIPMENTS.length - 1; i >= 0; i--) if (SHIPMENTS[i].fresh) SHIPMENTS.splice(i, 1); showView('home'); }
+
+/* ---------------- start (inside the widget) ---------------- */
+function unlockAudio() { if (synth) { try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; synth.speak(u); } catch (e) { } } }
+function begin(mode) {
+  if (!S.started) { S.started = true; $('#freddy').classList.remove('pre'); unlockAudio(); touch(); if (mode === 'talk') startMeter(); }
+  if (mode === 'tour') return runDemo();
+  if (mode === 'talk') {
+    const h = new Date().getHours();
+    systemSay(() => reply(`${h < 12 ? 'Morning' : h < 17 ? 'Hey' : 'Evening'}, GroupAir! What are we shipping today? Or ask me what's happening — one of your shipments is stuck in customs.`,
+      { say: `${h < 12 ? 'Morning' : h < 17 ? 'Hey' : 'Evening'}, GroupAir! What are we shipping today?`, chips: [["What's happening today?", "What's happening today?"], ['Quote 300 kg Joburg to Dubai', 'Quote 300 kg Joburg to Dubai'], ['Track 423344', 'Track 423344'], 'What can you do?'] }));
+  }
+}
+$('#wTalk').addEventListener('click', () => begin('talk'));
+$('#wTour').addEventListener('click', () => begin('tour'));
+
+/* ---------------- tour ---------------- */
+const DEMO = [
+  "Hey Freddy, what's happening today?",
+  "Not now. Quote me 3 pallets, 450 kilos, Johannesburg to London",
+  "120 by 80 by 110",
+  "Add 12% margin and send it to Acme Freight",
+  "Can you get it lower? Try 8% off",
+  { waitFor: () => S.pending && S.pending.type === 'confirm', max: 12000 },
+  "Yes, book it",
+  "Where's shipment 423344?",
+  "Yes, chase it"
+];
+let demoAbort = false;
+async function runDemo() {
+  if (S.demo) return; hardReset(); demoAbort = false; S.demo = true; setStatus();
+  addMsg('sys', 'Tour · tap the orb to stop');
+  await wait(700);
+  for (const step of DEMO) {
+    if (demoAbort) break;
+    if (typeof step === 'object') { const t0 = Date.now(); while (!demoAbort && !step.waitFor() && Date.now() - t0 < step.max) await wait(200); await chain; await wait(500); continue; }
+    await fakeSpeak(step); if (demoAbort) break;
+    submit(step, 'voice'); await chain; await wait(900);
+  }
+  if (!demoAbort) await reply("That's the tour. Your turn — tap the orb and talk to me, or pick one below.", { chips: defaultChips() });
+  S.demo = false; setStatus();
+  if (!demoAbort) setTimeout(autoListen, 300);
+}
+async function fakeSpeak(text) {
+  S.listening = true; setStatus(); showLive('', true); await wait(500);
+  const words = text.split(' '); let cur = '';
+  for (const w of words) { if (demoAbort) break; cur += (cur ? ' ' : '') + w; showLive(cur, true); micLevel = .15 + Math.random() * .2; await wait(115 + Math.random() * 120); }
+  await wait(400); micLevel = 0; S.listening = false; showLive(''); setStatus();
+}
+function stopDemo(silent) { if (!S.demo) return; demoAbort = true; stopSpeaking(); S.demo = false; S.listening = false; showLive(''); setStatus(); if (!silent) toast('Tour stopped — over to you'); }
+
+/* ---------------- boot ---------------- */
+orbs.push(new Orb($('#orbCanvas')), new Orb($('#wCanvas')));
+requestAnimationFrame(loop);
+showView('home');
+window.__freddy = { S, submit, parse, generate, route };
+
+</script>
+</body>
+</html>
